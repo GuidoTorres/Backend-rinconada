@@ -759,7 +759,6 @@ const getSaldoMensual = async (req, res, next) => {
         movimientosPorMesYAnio[clave].egresos += monto;
       }
     });
-    console.log(movimientosPorMesYAnio);
 
     const resultado = Object.values(movimientosPorMesYAnio).map(item => {
       return { 

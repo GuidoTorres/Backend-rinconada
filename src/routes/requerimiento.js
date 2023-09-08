@@ -3,7 +3,7 @@ const requerimiento = require("../controllers/requerimiento");
 const checkAuditoria = require("../middleware/auditoria");
 const checkAuth = require("../middleware/auth");
 
-router.get("/",checkAuth, requerimiento.getRequerimiento);
+router.get("/", requerimiento.getRequerimiento);
 router.get("/last/id",checkAuth, requerimiento.getLastId);
 router.get("/trabajador",checkAuth, requerimiento.getTrabajadorRequerimiento);
 router.get("/data/trabajador",checkAuth, requerimiento.getReqTrabajador);

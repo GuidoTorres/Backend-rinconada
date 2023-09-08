@@ -49,10 +49,6 @@ const getContratoById = async (req, res, next) => {
     });
 
     const format = user.map((item, i) => {
-      const contrato = item.trabajador_contratos.map((data) => data.contrato);
-      const evaluacion = item.trabajador_contratos.map(
-        (data) => data.evaluacion
-      );
       return {
         nro: i + 1,
         dni: item?.dni,
@@ -70,7 +66,39 @@ const getContratoById = async (req, res, next) => {
         deshabilitado: item?.deshabilitado,
         foto: item?.foto,
         suspendido: item?.suspendido,
-        contratos: item.trabajador_contratos,
+        contratos: item.trabajador_contratos.map((data) => {
+
+          const dataContrato={
+            fecha_inicio: dayjs(data.contrato?.fecha_inicio)?.format("YYYY-MM-DD"),
+            codigo_contrato: data.contrato?.codigo_contrato,
+            tipo_contrato: data.contrato?.tipo_contrato,
+            recomendado_por: data.contrato?.recomendado_por,
+            cooperativa: data.contrato?.cooperativa,
+            condicion_cooperativa: data.contrato?.condicion_cooperativa,
+            periodo_trabajo: data.contrato?.periodo_trabajo,
+            fecha_fin: dayjs(data.contrato?.fecha_fin)?.format("YYYY-MM-DD"),
+            fecha_fin_estimada: dayjs(data.contrato?.fecha_fin)?.format("YYYY-MM-DD"),
+            gerencia_id: data.contrato?.gerencia_id,
+            area_id: data.contrato?.area_id,
+            jefe_directo: data.contrato?.jefe_directo,
+            base: data.contrato?.base,
+            termino_contrato: data.contrato?.termino_contrato,
+            nota_contrato: data.contrato?.nota_contrato,
+            puesto_id: data.contrato?.puesto_id,
+            campamento_id: data.contrato?.campamento_id,
+            asociacion_id: data.contrato?.asociacion_id,
+            evaluacion_id: data.contrato?.evaluacion_id,
+            volquete: data.contrato?.volquete,
+            teletran: data.contrato?.teletran,
+            tareo: data.contrato?.tareo,
+            finalizado: data?.contrato?.finalizado
+          }
+
+         return{
+          contrato: dataContrato,
+          evaluacion: data?.evaluacion
+         }
+        }),
       };
     });
 
@@ -473,6 +501,7 @@ const getTrabajadorContratoEvaluacion = async (req, res, next) => {
         })
       );
     });
+    res.status(200).json({ message: "Actualización exitosa" });
   } catch (error) {
     console.log(error);
     res.status(500).json();

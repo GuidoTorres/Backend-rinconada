@@ -36,6 +36,27 @@ const getTrabajador = async (req, res, next) => {
 
           include: [
             {
+              model: evaluacion,
+              where: {
+                finalizado: { [Op.not]: true },
+              },
+              attributes: [
+                "fiscalizador_aprobado",
+                "control",
+                "topico",
+                "seguridad",
+                "medio_ambiente",
+                "recursos_humanos",
+                "finalizado",
+                "id",
+                "area_id",
+                "gerencia_id",
+                "puesto_id",
+                "campamento_id",
+              ],
+
+            },
+            {
               model: contrato,
               where: {
                 finalizado: { [Op.not]: true },
@@ -55,23 +76,7 @@ const getTrabajador = async (req, res, next) => {
                   attributes: { exclude: ["campamento_id"] },
                 },
               ],
-            },
-            {
-              model: evaluacion,
-              attributes: [
-                "fiscalizador_aprobado",
-                "control",
-                "topico",
-                "seguridad",
-                "medio_ambiente",
-                "recursos_humanos",
-                "finalizado",
-                "id",
-                "area_id",
-                "gerencia_id",
-                "puesto_id",
-                "campamento_id",
-              ],
+              required: false,
             },
           ],
         },
@@ -82,7 +87,7 @@ const getTrabajador = async (req, res, next) => {
 
     const obj = get
       .map((item) => {
-        const trabajador_contrato = item.trabajador_contratos
+        const trabajador_contrato = item.trabajador_contratos;
 
         return {
           dni: item?.dni,
@@ -101,7 +106,7 @@ const getTrabajador = async (req, res, next) => {
           foto: item?.foto,
           eliminar: item?.eliminar,
           evaluacion: trabajador_contrato[0]?.evaluacion,
-          contrato: trabajador_contrato[0]?.contrato
+          contrato: trabajador_contrato[0]?.contrato,
         };
       })
       .sort((a, b) => {
@@ -351,7 +356,6 @@ const postMultipleTrabajador = async (req, res, next) => {
         .status(500)
         .json({ msg: "No se pudo registrar a los trabajadores!", status: 500 });
     }
-
   } catch (error) {
     console.log(error);
     res

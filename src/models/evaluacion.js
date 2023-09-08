@@ -22,7 +22,6 @@ const evaluacion = sequelize.define(
       diabetes: DataTypes.STRING,
       antecedentes: DataTypes.STRING,
       emo: DataTypes.STRING,
-      trabajador_id: DataTypes.STRING,
       aprobado: DataTypes.STRING,
       control: DataTypes.STRING,
       topico: DataTypes.STRING,

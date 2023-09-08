@@ -87,6 +87,8 @@ const trabajador_contrato = sequelize.define(
     },
     contrato_id: DataTypes.INTEGER,
     trabajador_dni: DataTypes.STRING,
+    evaluacion_id: DataTypes.INTEGER,
+    estado: DataTypes.STRING
   },
   {
     tableName: "trabajador_contrato",

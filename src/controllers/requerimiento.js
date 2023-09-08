@@ -70,8 +70,7 @@ const getRequerimiento = async (req, res, next) => {
       .sort((a, b) => {
         return b.id - a.id;
       });
-    return res.status(200).json({ data: formatData });
-    next();
+    return res.status(200).json({ data: get });
   } catch (error) {
     console.log(error);
     res.status(500).json();
@@ -118,7 +117,6 @@ const postARequerimiento = async (req, res, next) => {
       .status(200)
       .json({ msg: "Requerimiento creado con éxito!", status: 200 });
 
-    next();
   } catch (error) {
     res.status(500).json({ msg: "No se pudo crear.", status: 500 });
   }
