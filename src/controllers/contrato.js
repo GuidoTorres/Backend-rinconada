@@ -69,6 +69,7 @@ const getContratoById = async (req, res, next) => {
         contratos: item.trabajador_contratos.map((data) => {
 
           const dataContrato={
+            contrato_id: data.contrato_id,
             fecha_inicio: dayjs(data.contrato?.fecha_inicio)?.format("YYYY-MM-DD"),
             codigo_contrato: data.contrato?.codigo_contrato,
             tipo_contrato: data.contrato?.tipo_contrato,
@@ -91,7 +92,8 @@ const getContratoById = async (req, res, next) => {
             volquete: data.contrato?.volquete,
             teletran: data.contrato?.teletran,
             tareo: data.contrato?.tareo,
-            finalizado: data?.contrato?.finalizado
+            finalizado: data?.contrato?.finalizado,
+            suspendido: data?.contrato?.suspendido
           }
 
          return{
@@ -314,6 +316,7 @@ const updateContrato = async (req, res, next) => {
       ...req.body,
       fecha_fin_estimada: req.body.fecha_fin,
     };
+    delete info.contrato_id
 
     await contrato.update(info, {
       where: { id: id },

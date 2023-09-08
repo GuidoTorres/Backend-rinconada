@@ -37,9 +37,7 @@ const getTrabajador = async (req, res, next) => {
           include: [
             {
               model: evaluacion,
-              where: {
-                finalizado: { [Op.not]: true },
-              },
+
               attributes: [
                 "fiscalizador_aprobado",
                 "control",
@@ -54,14 +52,10 @@ const getTrabajador = async (req, res, next) => {
                 "puesto_id",
                 "campamento_id",
               ],
-
             },
             {
               model: contrato,
-              where: {
-                finalizado: { [Op.not]: true },
-                suspendido: { [Op.not]: true },
-              },
+
               attributes: [
                 "id",
                 "nota_contrato",
@@ -69,6 +63,7 @@ const getTrabajador = async (req, res, next) => {
                 "gerencia_id",
                 "area_id",
                 "puesto_id",
+                "suspendido"
               ],
               include: [
                 {
@@ -88,6 +83,18 @@ const getTrabajador = async (req, res, next) => {
     const obj = get
       .map((item) => {
         const trabajador_contrato = item.trabajador_contratos;
+        const contratosFinalizados = trabajador_contrato.filter(
+          (contrato) => contrato.contrato
+        );
+
+        // Ordena los contratos finalizados por ID de contrato en orden descendente
+        contratosFinalizados.sort((a, b) => b.id - a.id);
+
+        // Obtiene el último contrato finalizado
+        const ultimoContratoFinalizado = contratosFinalizados[0]?.contrato
+          ?.suspendido === true
+          ? contratosFinalizados[0]?.contrato?.suspendido
+          : false;
 
         return {
           dni: item?.dni,
@@ -105,8 +112,13 @@ const getTrabajador = async (req, res, next) => {
           deshabilitado: item?.deshabilitado,
           foto: item?.foto,
           eliminar: item?.eliminar,
-          evaluacion: trabajador_contrato[0]?.evaluacion,
-          contrato: trabajador_contrato[0]?.contrato,
+          evaluacion: trabajador_contrato
+            ?.map((data) => data.evaluacion)
+            ?.filter((dat) => dat?.finalizado === false)[0],
+          contrato: trabajador_contrato
+            ?.map((data) => data.contrato)
+            ?.filter((dat) => dat?.finalizado === false)[0],
+          suspendido: ultimoContratoFinalizado,
         };
       })
       .sort((a, b) => {
