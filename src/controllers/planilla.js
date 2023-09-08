@@ -35,7 +35,7 @@ const getPlanilla = async (req, res, next) => {
         "apellido_materno",
         "dni",
         "fecha_nacimiento",
-        "telefono"
+        "telefono",
       ],
       include: [
         {
@@ -127,10 +127,7 @@ const getPlanilla = async (req, res, next) => {
         },
         {
           model: trabajador,
-          attributes: [
-
-            "codigo_trabajador",
-          ],
+          attributes: ["codigo_trabajador"],
           include: [
             {
               model: trabajadorAsistencia,
@@ -222,7 +219,7 @@ const getPlanilla = async (req, res, next) => {
       (item) => item?.trabajador_contratos?.length > 0
     );
     const mapTrabajador = filterTrabajador?.map((item, i) => {
-      const contratoFiltrado = item?.trabajador_contratos
+      const contratoFiltrado = item?.trabajador_contratos;
 
       // Encuentra la fecha de inicio más temprana y la fecha de finalización más tardía
       let fechaInicioContrato = contratoFiltrado[0]?.contrato?.fecha_inicio;
@@ -274,21 +271,23 @@ const getPlanilla = async (req, res, next) => {
           contratoFiltrado[0]?.contrato?.periodo_trabajo.toString(),
         fecha_inicio: dayjs(fechaInicioContrato).format("DD-MM-YYYY"),
         fecha_fin: dayjs(fechaFinContrato).format("DD-MM-YYYY"),
-        campamento: contratoFiltrado[0]?.campamento?.nombre.toString(),
+        campamento: contratoFiltrado[0]?.contrato?.campamento?.nombre,
         asistencia: asistencia,
         evaluacion: contratoFiltrado[0]?.evaluacion,
         volquete:
-          contratoFiltrado[0]?.contrato?.teletrans?.at(-1)?.volquete
-            .toString() || 0,
+          contratoFiltrado[0]?.contrato?.teletrans
+            ?.at(-1)
+            ?.volquete.toString() || 0,
         teletran:
-          contratoFiltrado[0]?.contrato?.teletrans?.at(-1)?.teletrans
-            .toString() || 0,
+          contratoFiltrado[0]?.contrato?.teletrans
+            ?.at(-1)
+            ?.teletrans.toString() || 0,
         total:
-          contratoFiltrado[0]?.contrato?.teletrans?.at(-1)?.total
-            .toString() || 0,
+          contratoFiltrado[0]?.contrato?.teletrans?.at(-1)?.total.toString() ||
+          0,
         saldo:
-          contratoFiltrado[0]?.contrato?.teletrans?.at(-1)?.saldo
-            .toString() || 0,
+          contratoFiltrado[0]?.contrato?.teletrans?.at(-1)?.saldo.toString() ||
+          0,
       };
     });
 
