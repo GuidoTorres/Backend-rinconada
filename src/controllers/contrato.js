@@ -146,6 +146,7 @@ const getContratoAsociacionById = async (req, res, next) => {
         campamento_id: item?.campamento_id,
         empresa_id: item?.empresa_id,
         asociacion_id: item?.asociacion_id,
+        puesto_id: item?.puesto_id,
         estado: item?.estado,
         volquete: item?.volquete,
         teletran: item?.teletran,
@@ -310,7 +311,7 @@ const postContratoAsociacion = async (req, res, next) => {
 //actualizar el contrato
 const updateContrato = async (req, res, next) => {
   let id = req.params.id;
-
+  console.log(req.body);
   try {
     let info = {
       ...req.body,

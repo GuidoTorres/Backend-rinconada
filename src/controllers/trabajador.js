@@ -18,14 +18,58 @@ const fs = require("fs");
 const getTrabajador = async (req, res, next) => {
   // trabajadores que no son de asociación
   try {
-    const page = parseInt(req.query.page) || 1; // Número de página, por defecto 1
-    const pageSize = parseInt(req.query.pageSize) || 10;
+  //   let whereConditionsContrato = {};
+  //   const page = parseInt(req.query.page) || 1; // Número de página, por defecto 1
+  //   const pageSize = parseInt(req.query.pageSize) || 10;
+  //   let searchTerm = req.query.search || "";
+
+  //   if (req.query.campamento_id) {
+  //     whereConditionsContrato.campamento_id = +req.query.campamento_id;
+  // }
+
+  // if (req.query.area_id) {
+  //     whereConditionsContrato.area_id = +req.query.area_id;
+  // }
+
+  // if (req.query.puesto_id) {
+  //     whereConditionsContrato.puesto_id = +req.query.puesto_id;
+  // }
+    const tot = await trabajador.count({
+      // where: {
+      //   [Op.or]: [
+      //     Sequelize.where(
+      //       Sequelize.fn(
+      //         "concat",
+      //         Sequelize.col("apellido_paterno"),
+      //         " ",
+      //         Sequelize.col("apellido_materno"),
+      //         " ",
+      //         Sequelize.col("trabajador.nombre")
+      //       ),
+      //       { [Op.like]: `%${searchTerm}%` }
+      //     ),
+      //     { dni: { [Op.like]: `%${searchTerm}%` } },
+      //   ],
+      //   asociacion_id: { [Op.is]: null },
+      // },
+    });
     const { rows: get, count: totalCount } = await trabajador.findAndCountAll({
       where: {
-        [Op.and]: [
-          { asociacion_id: { [Op.is]: null } },
-          { eliminar: { [Op.not]: true } },
-        ],
+        // [Op.or]: [
+        //   Sequelize.where(
+        //     Sequelize.fn(
+        //       "concat",
+        //       Sequelize.col("apellido_paterno"),
+        //       " ",
+        //       Sequelize.col("apellido_materno"),
+        //       " ",
+        //       Sequelize.col("trabajador.nombre")
+        //     ),
+        //     { [Op.like]: `%${searchTerm}%` }
+        //   ),
+        //   { dni: { [Op.like]: `%${searchTerm}%` } },
+        // ],
+        asociacion_id: { [Op.is]: null },
       },
       attributes: { exclude: ["usuarioId", "trabajador_dni"] },
       order: [[Sequelize.literal("codigo_trabajador"), "DESC"]],
@@ -55,7 +99,7 @@ const getTrabajador = async (req, res, next) => {
             },
             {
               model: contrato,
-
+              // where: whereConditionsContrato,
               attributes: [
                 "id",
                 "nota_contrato",
@@ -63,7 +107,8 @@ const getTrabajador = async (req, res, next) => {
                 "gerencia_id",
                 "area_id",
                 "puesto_id",
-                "suspendido"
+                "campamento_id",
+                "suspendido",
               ],
               include: [
                 {
@@ -91,10 +136,10 @@ const getTrabajador = async (req, res, next) => {
         contratosFinalizados.sort((a, b) => b.id - a.id);
 
         // Obtiene el último contrato finalizado
-        const ultimoContratoFinalizado = contratosFinalizados[0]?.contrato
-          ?.suspendido === true
-          ? contratosFinalizados[0]?.contrato?.suspendido
-          : false;
+        const ultimoContratoFinalizado =
+          contratosFinalizados[0]?.contrato?.suspendido === true
+            ? contratosFinalizados[0]?.contrato?.suspendido
+            : false;
 
         return {
           dni: item?.dni,
@@ -112,13 +157,15 @@ const getTrabajador = async (req, res, next) => {
           deshabilitado: item?.deshabilitado,
           foto: item?.foto,
           eliminar: item?.eliminar,
-          evaluacion: trabajador_contrato
-            ?.map((data) => data.evaluacion)
-            ?.filter((dat) => dat?.finalizado === false)[0],
-          contrato: trabajador_contrato
-            ?.map((data) => data.contrato)
-            ?.filter((dat) => dat?.finalizado === false)[0],
-          suspendido: ultimoContratoFinalizado,
+          evaluacion:
+            trabajador_contrato
+              ?.map((data) => data.evaluacion)
+              ?.filter((dat) => dat?.finalizado === false)[0] || null,
+          contrato:
+            trabajador_contrato
+              ?.map((data) => data.contrato)
+              ?.filter((dat) => dat?.finalizado === false)[0] || null,
+          suspendido: ultimoContratoFinalizado || null,
         };
       })
       .sort((a, b) => {
@@ -131,15 +178,15 @@ const getTrabajador = async (req, res, next) => {
           return a.deshabilitado ? 1 : -1;
         }
       });
-    const totalPages = Math.ceil(totalCount / pageSize);
+    // const totalPages = Math.ceil(tot / pageSize);
     return res.status(200).json({
       data: obj,
-      pagination: {
-        currentPage: page,
-        pageSize: pageSize,
-        totalCount: totalCount,
-        totalPages: totalPages,
-      },
+      // pagination: {
+      //   currentPage: page,
+      //   pageSize: pageSize,
+      //   totalCount: tot,
+      //   totalPages: totalPages,
+      // },
     });
   } catch (error) {
     console.log(error);

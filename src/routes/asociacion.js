@@ -4,7 +4,7 @@ const checkAuditoria = require("../middleware/auditoria");
 const checkAuth = require("../middleware/auth");
 const uploadFile = require("../middleware/multerAsociacion")
 
-router.get("/",checkAuth,  asociacion.getAsociacion);
+router.get("/",  asociacion.getAsociacion);
 router.post("/",checkAuth,checkAuditoria, asociacion.postAsociacion);
 router.post("/upload/:id",checkAuth, uploadFile(),checkAuditoria, asociacion.uploadFile);
 router.get("/:id",checkAuth, asociacion.getAsociacionById);

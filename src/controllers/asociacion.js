@@ -12,7 +12,6 @@ const {
 const XLSX = require("xlsx");
 const { Op } = require("sequelize");
 const dayjs = require("dayjs");
-const moment = require("moment");
 require("moment/locale/es");
 // Cargar idioma en español
 const es = require("dayjs/locale/es");
@@ -35,18 +34,7 @@ const getAsociacion = async (req, res, next) => {
           attributes: { exclude: ["usuarioId"] },
           include: [
             {
-              model: trabajador_contrato,
-              include: [
-                {
-                  model: contrato,
-                  attributes: { exclude: ["contrato_id"] },
-                  where: { finalizado: { [Op.not]: true } },
-                },
-                {
-                  model: evaluacion,
-                  where: { finalizado: { [Op.not]: true } },
-                },
-              ],
+              model: evaluacion,
             },
           ],
         },
@@ -56,11 +44,13 @@ const getAsociacion = async (req, res, next) => {
     const formatData = all.map((item) => {
       const trabajadors = item.trabajadors
         .map((data, i) => {
-          const contratoActivo = item?.contratos[0]
+          const contratoActivo = item?.contratos?.filter(
+            (ele) => ele.finalizado === false
+          );
           return {
             dni: data.dni,
             codigo_trabajador: data.codigo_trabajador,
-            campamento: contratoActivo?.campamento?.nombre,
+            campamento: contratoActivo?.at(0)?.campamento?.nombre,
             fecha_nacimiento: data.fecha_nacimiento,
             telefono: data.telefono,
             nombre: data.nombre,
@@ -74,13 +64,15 @@ const getAsociacion = async (req, res, next) => {
             deshabilitado: data.deshabilitado,
             foto: data.foto,
             eliminar: data.eliminar,
-            evaluacions: data?.trabajador_contratos[0]?.evaluacion,
+            evaluacions: data.evaluacions.filter(
+              (dat) => dat.finalizado === false
+            )[0],
           };
         })
         .sort((a, b) =>
           a.codigo_trabajador.localeCompare(b.codigo_trabajador)
         );
-
+    
       // Aquí es donde se agrega el campo 'nro'
       const trabajadorsWithNro = trabajadors.map((trabajador, index) => ({
         ...trabajador,
@@ -94,7 +86,7 @@ const getAsociacion = async (req, res, next) => {
         nombre: item?.nombre,
         codigo: item?.codigo,
         tipo: item?.tipo,
-        campamento: contratoActivo[0]?.campamento?.nombre,
+        campamento: contratoActivo?.at(0)?.campamento?.nombre,
         contrato: contratoActivo
           .map((data) => {
             return {
@@ -125,6 +117,7 @@ const getAsociacion = async (req, res, next) => {
         trabajadors: trabajadorsWithNro,
       };
     });
+    
 
     return res.status(200).json({ data: formatData });
   } catch (error) {
@@ -132,6 +125,7 @@ const getAsociacion = async (req, res, next) => {
     res.status(500).json();
   }
 };
+
 
 //  obtener la lista de asociacion con trabajador por id
 const getAsociacionById = async (req, res, next) => {
