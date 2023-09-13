@@ -70,13 +70,13 @@ const getContratoById = async (req, res, next) => {
 
           const dataContrato={
             contrato_id: data.contrato_id,
-            fecha_inicio: dayjs(data.contrato?.fecha_inicio)?.format("YYYY-MM-DD"),
             codigo_contrato: data.contrato?.codigo_contrato,
             tipo_contrato: data.contrato?.tipo_contrato,
             recomendado_por: data.contrato?.recomendado_por,
             cooperativa: data.contrato?.cooperativa,
             condicion_cooperativa: data.contrato?.condicion_cooperativa,
             periodo_trabajo: data.contrato?.periodo_trabajo,
+            fecha_inicio: dayjs(data.contrato?.fecha_inicio)?.format("YYYY-MM-DD"),
             fecha_fin: dayjs(data.contrato?.fecha_fin)?.format("YYYY-MM-DD"),
             fecha_fin_estimada: dayjs(data.contrato?.fecha_fin)?.format("YYYY-MM-DD"),
             gerencia_id: data.contrato?.gerencia_id,
@@ -512,6 +512,41 @@ const getTrabajadorContratoEvaluacion = async (req, res, next) => {
   }
 };
 
+const updateAllContratos = async (req,res) =>{
+
+  try {
+    // Obtener todos los contratos
+    const contratos = await contrato.findAll({attributes:{exclude:["contrato_id"]}});
+
+    for (const contrato of contratos) {
+        const { id, finalizado, suspendido } = contrato;
+
+        let nuevoEstado;
+
+        if (suspendido) {
+            nuevoEstado = 'Suspendido';
+        } else if (finalizado) {
+            nuevoEstado = 'Finalizado';
+        } else {
+            nuevoEstado = 'Activo';
+        }
+
+        // Actualizar el estado en trabajador_contrato_evaluacion
+        await trabajador_contrato.update({ estado: nuevoEstado }, {
+            where: {
+                contrato_id: id
+            }
+        });
+    }
+
+    res.send({ success: true });
+
+} catch (error) {
+  console.log(error);
+    res.status(500).send({ success: false, message: error.message });
+}
+}
+
 module.exports = {
   getContrato,
   updateContrato,
@@ -523,4 +558,5 @@ module.exports = {
   getLastId,
   activarContrato,
   getTrabajadorContratoEvaluacion,
+  updateAllContratos
 };
