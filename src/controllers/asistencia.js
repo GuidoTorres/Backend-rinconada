@@ -154,7 +154,7 @@ const getExcelAsistencia = async (req, res, next) => {
         .padStart(2, "0")}`;
       return {
         asistencia_id: idFechaAsistencia,
-        trabajador_id: item.dni.toString(),
+        trabajador_id: item?.dni?.toString(),
         asistencia: item.entrada ? "Asistio" : "Falto",
         hora_ingreso: item.entrada,
         tarde: diferencia_minutos > umbral_tardanza ? "Si" : "No",

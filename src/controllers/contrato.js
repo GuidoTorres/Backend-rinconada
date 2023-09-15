@@ -7,6 +7,9 @@ const {
   aprobacion_contrato_pago,
   contrato_pago,
   sequelize,
+  cargo,
+  suspensiones,
+  suspensiones_jefes,
 } = require("../../config/db");
 const { Op } = require("sequelize");
 const dayjs = require("dayjs");
@@ -41,6 +44,7 @@ const getContratoById = async (req, res, next) => {
               model: contrato,
 
               attributes: { exclude: ["contrato_id"] },
+              include: [{ model: cargo, attributes: ["id", "nombre"] }],
             },
             { model: evaluacion },
           ],
@@ -67,8 +71,8 @@ const getContratoById = async (req, res, next) => {
         foto: item?.foto,
         suspendido: item?.suspendido,
         contratos: item.trabajador_contratos.map((data) => {
-
-          const dataContrato={
+          const dataContrato = {
+            estado: data?.estado,
             contrato_id: data.contrato_id,
             codigo_contrato: data.contrato?.codigo_contrato,
             tipo_contrato: data.contrato?.tipo_contrato,
@@ -76,9 +80,13 @@ const getContratoById = async (req, res, next) => {
             cooperativa: data.contrato?.cooperativa,
             condicion_cooperativa: data.contrato?.condicion_cooperativa,
             periodo_trabajo: data.contrato?.periodo_trabajo,
-            fecha_inicio: dayjs(data.contrato?.fecha_inicio)?.format("YYYY-MM-DD"),
+            fecha_inicio: dayjs(data.contrato?.fecha_inicio)?.format(
+              "YYYY-MM-DD"
+            ),
             fecha_fin: dayjs(data.contrato?.fecha_fin)?.format("YYYY-MM-DD"),
-            fecha_fin_estimada: dayjs(data.contrato?.fecha_fin)?.format("YYYY-MM-DD"),
+            fecha_fin_estimada: dayjs(data.contrato?.fecha_fin)?.format(
+              "YYYY-MM-DD"
+            ),
             gerencia_id: data.contrato?.gerencia_id,
             area_id: data.contrato?.area_id,
             jefe_directo: data.contrato?.jefe_directo,
@@ -93,13 +101,14 @@ const getContratoById = async (req, res, next) => {
             teletran: data.contrato?.teletran,
             tareo: data.contrato?.tareo,
             finalizado: data?.contrato?.finalizado,
-            suspendido: data?.contrato?.suspendido
-          }
+            suspendido: data?.contrato?.suspendido,
+            cargo: data?.contrato?.cargo?.nombre,
+          };
 
-         return{
-          contrato: dataContrato,
-          evaluacion: data?.evaluacion
-         }
+          return {
+            contrato: dataContrato,
+            evaluacion: data?.evaluacion,
+          };
         }),
       };
     });
@@ -192,6 +201,7 @@ const postContrato = async (req, res, next) => {
       where: {
         trabajador_dni: req.body.trabajador_id,
         contrato_id: null,
+        estado: "Activo",
       },
     });
 
@@ -317,7 +327,7 @@ const updateContrato = async (req, res, next) => {
       ...req.body,
       fecha_fin_estimada: req.body.fecha_fin,
     };
-    delete info.contrato_id
+    delete info.contrato_id;
 
     await contrato.update(info, {
       where: { id: id },
@@ -392,14 +402,18 @@ const deleteContrato = async (req, res, next) => {
     let aproba = await aprobacion_contrato_pago.destroy({
       where: { contrato_id: id },
     });
-    let removeTrabajadorContrato = await trabajador_contrato.destroy({
-      where: { contrato_id: id },
-    });
-    let remove = await contrato.destroy({ where: { id: id } });
+    await trabajador_contrato.update(
+      { contrato_id: null },
+      {
+        where: { contrato_id: id },
+      }
+    );
+    await contrato.destroy({ where: { id: id } });
     return res
       .status(200)
       .json({ msg: "Contrato eliminado con éxito!", status: 200 });
   } catch (error) {
+    console.log(error);
     res
       .status(500)
       .json({ msg: "No se pudo eliminar el contrato", status: 500 });
@@ -512,40 +526,156 @@ const getTrabajadorContratoEvaluacion = async (req, res, next) => {
   }
 };
 
-const updateAllContratos = async (req,res) =>{
-
+const updateAllContratos = async (req, res) => {
   try {
     // Obtener todos los contratos
-    const contratos = await contrato.findAll({attributes:{exclude:["contrato_id"]}});
+    const contratos = await contrato.findAll({
+      attributes: { exclude: ["contrato_id"] },
+    });
 
     for (const contrato of contratos) {
-        const { id, finalizado, suspendido } = contrato;
+      const { id, finalizado, suspendido } = contrato;
 
-        let nuevoEstado;
+      let nuevoEstado;
 
-        if (suspendido) {
-            nuevoEstado = 'Suspendido';
-        } else if (finalizado) {
-            nuevoEstado = 'Finalizado';
-        } else {
-            nuevoEstado = 'Activo';
+      if (suspendido) {
+        nuevoEstado = "Suspendido";
+      } else if (finalizado) {
+        nuevoEstado = "Finalizado";
+      } else {
+        nuevoEstado = "Activo";
+      }
+
+      // Actualizar el estado en trabajador_contrato_evaluacion
+      await trabajador_contrato.update(
+        { estado: nuevoEstado },
+        {
+          where: {
+            contrato_id: id,
+          },
         }
+      );
+    }
+    res.send({ success: true });
+  } catch (error) {
+    console.log(error);
+    res.status(500).send({ success: false, message: error.message });
+  }
+};
 
-        // Actualizar el estado en trabajador_contrato_evaluacion
-        await trabajador_contrato.update({ estado: nuevoEstado }, {
-            where: {
-                contrato_id: id
-            }
-        });
+const registrarSuspension = async (req, res) => {
+  const {
+    nombre,
+    fecha_suspension,
+    descripcion,
+    observacion,
+    duracion,
+    nivel_falta,
+    encargado_suspender,
+    terminado,
+    indeterminado,
+    estado,
+    jefes,
+    cargo,
+    cooperativa,
+    dni,
+    contrato_id,
+    tipo,
+  } = req.body;
+
+  // Iniciar una transacción
+  const t = await sequelize.transaction();
+
+  try {
+    const traba_contrato = await trabajador_contrato.findOne({
+      where: {
+        trabajador_dni: dni,
+        contrato_id: contrato_id,
+      },
+      include: [
+        { model: contrato, attributes: { exclude: ["contrato_id"] } },
+        evaluacion,
+      ],
+    });
+
+    if (!traba_contrato) {
+      return res
+        .status(500)
+        .json({ msg: "No se encontro el contrato.", status: 500 });
     }
 
-    res.send({ success: true });
+    const fechaInicio = dayjs(fecha_suspension);
+    const fechaCumplimiento = fechaInicio
+      .add(parseInt(duracion), "month")
+      .format("YYYY-MM-DD");
+    // Crear la suspensión
+    const suspension = await suspensiones.create(
+      {
+        nombre,
+        fecha_suspension,
+        descripcion,
+        observacion,
+        duracion,
+        fecha_cumplimiento: fechaCumplimiento,
+        nivel_falta,
+        encargado_suspender,
+        estado,
+        terminado: false,
+        indeterminado: duracion === "0" ? true : false,
+        cargo,
+        cooperativa,
+        dni,
+        trabajador_contrato_id: traba_contrato.id,
+      },
+      { transaction: t }
+    );
 
-} catch (error) {
-  console.log(error);
-    res.status(500).send({ success: false, message: error.message });
-}
-}
+    // Asociar jefes
+    for (let jefeData of jefes) {
+      let parsedJefe = JSON.parse(jefeData);
+      await suspensiones_jefes.create(
+        {
+          trabajador_id: parseInt(parsedJefe.dni),
+          contrato_id: parseInt(parsedJefe.contrato_id),
+          suspension_id: suspension.id,
+        },
+        { transaction: t }
+      );
+    }
+    if (tipo === "individual") {
+      if (traba_contrato) {
+        traba_contrato.estado = "Suspendido";
+        await traba_contrato.save({ transaction: t });
+
+        if (traba_contrato.contrato) {
+          traba_contrato.contrato.finalizado = true;
+          await traba_contrato.contrato.save({ transaction: t });
+        }
+
+        if (traba_contrato.evaluacion) {
+          traba_contrato.evaluacion.finalizado = true;
+          await traba_contrato.evaluacion.save({ transaction: t });
+        }
+      }
+    } else {
+      if (traba_contrato) {
+        traba_contrato.estado = "Suspendido";
+        await traba_contrato.save({ transaction: t });
+      }
+
+      await trabajador.update({ asociacion_id: null }, { where: { dni: dni } });
+    }
+    await t.commit();
+
+    res
+      .status(200)
+      .json({ msg: "Suspensión registrada con éxito!", status: 200 });
+  } catch (error) {
+    await t.rollback();
+    console.log(error);
+    res.status(500).send({ msg: "Error interno del servidor", status:500 });
+  }
+};
 
 module.exports = {
   getContrato,
@@ -558,5 +688,6 @@ module.exports = {
   getLastId,
   activarContrato,
   getTrabajadorContratoEvaluacion,
-  updateAllContratos
+  updateAllContratos,
+  registrarSuspension,
 };

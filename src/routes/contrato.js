@@ -8,6 +8,7 @@ router.get("/trabajador/evaluacion", contrato.getTrabajadorContratoEvaluacion);
 router.get("/last", checkAuth, contrato.getLastId);
 router.get("/activar/:id", contrato.activarContrato);
 router.get("/updateall", contrato.updateAllContratos)
+router.post("/suspension", checkAuth, checkAuditoria, contrato.registrarSuspension);
 router.post("/", checkAuth, checkAuditoria, contrato.postContrato);
 router.post(
   "/asociacion",

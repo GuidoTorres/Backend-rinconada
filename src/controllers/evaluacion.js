@@ -5,6 +5,7 @@ const {
   contratoEvaluacion,
   trabajador_contrato,
   sequelize,
+  suspensiones,
 } = require("../../config/db");
 const dayjs = require("dayjs");
 const { Op } = require("sequelize");
@@ -24,79 +25,85 @@ const getEvaluacionById = async (req, res, next) => {
   let id = req.params.id;
 
   try {
-    const evaluaciones = await evaluacion.findAll({
-      where: { trabajador_id: id },
-      order: [["id", "ASC"]],
+    const evaluaciones = await trabajador.findAll({
+      attributes: ["nombre", "apellido_paterno", "apellido_materno", "dni"],
+      where: { dni: id },
       include: [
         {
-          model: trabajador,
-          attributes: { exclude: ["usuarioId"] },
+          model: trabajador_contrato,
+
+          include: [
+            {
+              model: contrato,
+              attributes: ["suspendido", "nota_contrato"],
+            },
+            {
+              model: evaluacion,
+            },
+            {model:suspensiones}
+          ],
         },
       ],
     });
 
-    const contratos = await trabajador_contrato.findAll({
-      where: { trabajador_dni: id },
-      order: [["id", "ASC"]],
-      include: [
-        {
-          model: contrato,
-          attributes: ["suspendido", "nota_contrato"],
-        },
-      ],
-    });
-    const obj = evaluaciones.map((item, index) => {
-      let contrato = contratos[index] ? contratos[index].contrato : null;
+    const obj = evaluaciones
+      .map((trabajador) =>
+        trabajador.trabajador_contratos.map((data) => {
+          return {
+            evaluacion_id: data?.evaluacion.id,
+            trabajador_id: trabajador?.dni,
+            fecha_evaluacion_tabla: dayjs(
+              data?.evaluacion?.fecha_evaluacion
+            ).format("DD-MM-YYYY"),
+            fecha_evaluacion: dayjs(data?.evaluacion?.fecha_evaluacion),
+            evaluacion_laboral: data?.evaluacion?.evaluacion_laboral,
+            finalizado: data?.evaluacion?.finalizado,
+            antecedentes: data?.evaluacion?.antecedentes,
+            capacitacion_gema: data?.evaluacion?.capacitacion_gema,
+            capacitacion_sso: data?.evaluacion?.capacitacion_sso,
+            gerencia_id: data?.evaluacion?.gerencia_id,
+            area_id: data?.evaluacion?.area_id,
+            puesto_id: data?.evaluacion?.puesto_id,
+            campamento_id: data?.evaluacion?.campamento_id,
+            diabetes: data?.evaluacion?.diabetes,
+            emo: data?.evaluacion?.emo,
+            imc: data?.evaluacion?.imc,
+            presion_arterial: data?.evaluacion?.presion_arterial,
+            pulso: data?.evaluacion?.pulso,
+            saturacion: data?.evaluacion?.saturacion,
+            temperatura: data?.evaluacion?.temperatura,
+            aprobado: data?.evaluacion?.aprobado,
+            recomendado_por: data?.evaluacion?.recomendado_por,
+            cooperativa: data?.evaluacion?.cooperativa,
+            condicion_cooperativa: data?.evaluacion?.condicion_cooperativa,
+            nombre:
+              trabajador?.nombre +
+              " " +
+              trabajador?.apellido_paterno +
+              " " +
+              trabajador?.apellido_materno,
+            control: data?.evaluacion?.control,
+            topico: data?.evaluacion?.topico,
+            seguridad: data?.evaluacion?.seguridad,
+            medio_ambiente: data?.evaluacion?.medio_ambiente,
+            fiscalizador: data?.evaluacion?.fiscalizador,
+            fiscalizador_aprobado: data?.evaluacion?.fiscalizador_aprobado,
+            topico_observacion: data?.evaluacion?.topico_observacion,
+            control_observacion: data?.evaluacion?.control_observacion,
+            seguridad_observacion: data?.evaluacion?.seguridad_observacion,
+            medio_ambiente_observacion:
+              data?.evaluacion?.medio_ambiente_observacion,
+            recursos_humanos: data?.evaluacion?.recursos_humanos,
+            recursos_humanos_observacion:
+              data?.evaluacion?.recursos_humanos_observacion,
+            suspendido: data?.contrato?.suspendido || null,
+            nota_contrato: data?.contrato?.nota_contrato || null,
+            estado: data.estado,
+          };
+        })
+      )
+      .flat();
 
-      return {
-        evaluacion_id: item?.id,
-        trabajador_id: item?.trabajador?.id,
-        fecha_evaluacion_tabla: dayjs(item?.fecha_evaluacion).format(
-          "DD-MM-YYYY"
-        ),
-        fecha_evaluacion: dayjs(item?.fecha_evaluacion),
-        evaluacion_laboral: item?.evaluacion_laboral,
-        finalizado: item?.finalizado,
-        antecedentes: item?.antecedentes,
-        capacitacion_gema: item?.capacitacion_gema,
-        capacitacion_sso: item?.capacitacion_sso,
-        gerencia_id: item?.gerencia_id,
-        area_id: item?.area_id,
-        puesto_id: item?.puesto_id,
-        campamento_id: item?.campamento_id,
-        diabetes: item?.diabetes,
-        emo: item?.emo,
-        imc: item?.imc,
-        presion_arterial: item?.presion_arterial,
-        pulso: item?.pulso,
-        saturacion: item?.saturacion,
-        temperatura: item?.temperatura,
-        aprobado: item?.aprobado,
-        recomendado_por: item?.recomendado_por,
-        cooperativa: item?.cooperativa,
-        condicion_cooperativa: item?.condicion_cooperativa,
-        nombre:
-          item?.trabajador?.nombre +
-          " " +
-          item?.trabajador?.apellido_paterno +
-          " " +
-          item?.trabajador?.apellido_materno,
-        control: item?.control,
-        topico: item?.topico,
-        seguridad: item?.seguridad,
-        medio_ambiente: item?.medio_ambiente,
-        fiscalizador: item?.fiscalizador,
-        fiscalizador_aprobado: item?.fiscalizador_aprobado,
-        topico_observacion: item?.topico_observacion,
-        control_observacion: item?.control_observacion,
-        seguridad_observacion: item?.seguridad_observacion,
-        medio_ambiente_observacion: item?.medio_ambiente_observacion,
-        recursos_humanos: item?.recursos_humanos,
-        recursos_humanos_observacion: item?.recursos_humanos_observacion,
-        suspendido: contrato ? contrato.suspendido.toString() : null,
-        nota_contrato: contrato ? contrato.nota_contrato : null,
-      };
-    });
     return res.status(200).json({ data: obj });
   } catch (error) {
     console.log(error);
@@ -172,6 +179,7 @@ const postEvaluacion = async (req, res, next) => {
       {
         trabajador_dni: info.trabajador_id,
         evaluacion_id: post.id,
+        estado: "Activo",
       },
       { transaction: t }
     );
@@ -181,9 +189,6 @@ const postEvaluacion = async (req, res, next) => {
       .status(200)
       .json({ msg: "Evaluación creada con éxito!", status: 200 });
   } catch (error) {
-    console.log('====================================');
-    console.log(error);
-    console.log('====================================');
     await t.rollback();
     res
       .status(500)

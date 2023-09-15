@@ -52,7 +52,7 @@ const getPlanilla = async (req, res, next) => {
         {
           model: trabajador_contrato,
           attributes: { exclude: ["contrato_id"] },
-
+          where: { estado: { [Op.not]: "Suspendido" } },
           include: [
             {
               model: contrato,

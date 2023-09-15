@@ -8,6 +8,9 @@ const {
   trabajador_contrato,
   aprobacion_contrato_pago,
   usuario,
+  cargo,
+  suspensiones,
+  suspensiones_jefes,
 } = require("../../config/db");
 const { Op, Sequelize } = require("sequelize");
 const XLSX = require("xlsx");
@@ -18,22 +21,22 @@ const fs = require("fs");
 const getTrabajador = async (req, res, next) => {
   // trabajadores que no son de asociación
   try {
-  //   let whereConditionsContrato = {};
-  //   const page = parseInt(req.query.page) || 1; // Número de página, por defecto 1
-  //   const pageSize = parseInt(req.query.pageSize) || 10;
-  //   let searchTerm = req.query.search || "";
+    //   let whereConditionsContrato = {};
+    //   const page = parseInt(req.query.page) || 1; // Número de página, por defecto 1
+    //   const pageSize = parseInt(req.query.pageSize) || 10;
+    //   let searchTerm = req.query.search || "";
 
-  //   if (req.query.campamento_id) {
-  //     whereConditionsContrato.campamento_id = +req.query.campamento_id;
-  // }
+    //   if (req.query.campamento_id) {
+    //     whereConditionsContrato.campamento_id = +req.query.campamento_id;
+    // }
 
-  // if (req.query.area_id) {
-  //     whereConditionsContrato.area_id = +req.query.area_id;
-  // }
+    // if (req.query.area_id) {
+    //     whereConditionsContrato.area_id = +req.query.area_id;
+    // }
 
-  // if (req.query.puesto_id) {
-  //     whereConditionsContrato.puesto_id = +req.query.puesto_id;
-  // }
+    // if (req.query.puesto_id) {
+    //     whereConditionsContrato.puesto_id = +req.query.puesto_id;
+    // }
     const tot = await trabajador.count({
       // where: {
       //   [Op.or]: [
@@ -81,7 +84,6 @@ const getTrabajador = async (req, res, next) => {
           include: [
             {
               model: evaluacion,
-
               attributes: [
                 "fiscalizador_aprobado",
                 "control",
@@ -95,6 +97,7 @@ const getTrabajador = async (req, res, next) => {
                 "gerencia_id",
                 "puesto_id",
                 "campamento_id",
+                "cooperativa",
               ],
             },
             {
@@ -109,13 +112,21 @@ const getTrabajador = async (req, res, next) => {
                 "puesto_id",
                 "campamento_id",
                 "suspendido",
+                "fecha_fin_estimada",
               ],
               include: [
                 {
                   model: campamento,
-                  attributes: { exclude: ["campamento_id"] },
+                  attributes: ["id", "nombre"],
                 },
+                { model: cargo, attributes: ["id", "nombre"] },
               ],
+              required: false,
+            },
+            {
+              model: suspensiones,
+              where: { terminado: false },
+              include: [{ model: suspensiones_jefes }],
               required: false,
             },
           ],
@@ -125,21 +136,35 @@ const getTrabajador = async (req, res, next) => {
       // limit: pageSize,
     });
 
+    const suspendidos = await trabajador_contrato.findAll({
+      where: { estado: "Suspendido" },
+      include: [{
+        model: suspensiones,
+        where: { terminado: false }  // Filtrar por suspensiones que no estén terminadas.
+      }],
+    });
+    
+    // 2. Itera sobre cada fila.
+    for (let item of suspendidos) {
+      if (item.suspensiones) {
+        for (let susp of item.suspensiones) {
+    
+          // 3. Verifica la fecha_cumplimiento usando dayjs.
+          if (dayjs().isAfter(susp.fecha_cumplimiento)) {  // Si la fecha actual es después de la fecha de cumplimiento
+    
+            // Actualiza el campo 'terminado' a true.
+            await suspensiones.update({ terminado: true }, {
+              where: { id: susp.id }
+            });
+          }
+        }
+      }
+    }
     const obj = get
       .map((item) => {
-        const trabajador_contrato = item.trabajador_contratos;
-        const contratosFinalizados = trabajador_contrato.filter(
-          (contrato) => contrato.contrato
+        const trabajador_contrato = item.trabajador_contratos.filter(
+          (item) => item.estado === "Activo"
         );
-
-        // Ordena los contratos finalizados por ID de contrato en orden descendente
-        contratosFinalizados.sort((a, b) => b.id - a.id);
-
-        // Obtiene el último contrato finalizado
-        const ultimoContratoFinalizado =
-          contratosFinalizados[0]?.contrato?.suspendido === true
-            ? contratosFinalizados[0]?.contrato?.suspendido
-            : false;
 
         return {
           dni: item?.dni,
@@ -157,15 +182,13 @@ const getTrabajador = async (req, res, next) => {
           deshabilitado: item?.deshabilitado,
           foto: item?.foto,
           eliminar: item?.eliminar,
-          evaluacion:
-            trabajador_contrato
-              ?.map((data) => data.evaluacion)
-              ?.filter((dat) => dat?.finalizado === false)[0] || null,
-          contrato:
-            trabajador_contrato
-              ?.map((data) => data.contrato)
-              ?.filter((dat) => dat?.finalizado === false)[0] || null,
-          suspendido: ultimoContratoFinalizado || null,
+          evaluacion: trabajador_contrato[0]?.evaluacion || null,
+          contrato: trabajador_contrato[0]?.contrato || null,
+          suspendido:
+            item?.trabajador_contratos
+              ?.at(-1)
+              ?.suspensiones?.some((dat) => dat?.terminado !== true) || false,
+          suspension: item?.trabajador_contratos?.at(-1)?.suspensiones,
         };
       })
       .sort((a, b) => {
@@ -194,35 +217,34 @@ const getTrabajador = async (req, res, next) => {
   }
 };
 
-const getTrabajadorContratoEvaluacion = async (req, res, next) => {
+const getTrabajadorConContrato = async (req, res, next) => {
   try {
-    // const trabajadores = await trabajador.findAll({
-    //   attributes:{exclude:["usuarioId"]},
-    //   include: [
-    //     { model: trabajador_contrato, attributes: ["contrato_id"], include: },
-    //     { model: evaluacion },
-    //   ],
-    // });
-    // trabajadores.forEach((trabajador) => {
-    //   const { evaluaciones, trabajador_contratos } = trabajador;
-    //   // Ordenar las evaluaciones y contratos por algún criterio (p. ej., ID)
-    //   const evaluacionesOrdenadas = evaluaciones.sort((a, b) => a.id - b.id);
-    //   const contratosOrdenados = trabajador_contratos
-    //     .map((tc) => tc.contrato_id)
-    //     .sort((a, b) => a - b);
-    //   // Asignar evaluaciones a contratos correspondientes
-    //   contratosOrdenados.forEach((contratoId, index) => {
-    //     const evaluacionId = evaluacionesOrdenadas[index].id;
-    //     // Aquí podrías actualizar tu base de datos con la asignación
-    //     // O realizar cualquier otra acción necesaria
-    //     console.log(
-    //       `Asignar evaluación ${evaluacionId} a contrato ${contratoId}`
-    //     );
-    //   });
-    // });
+    const trabajadores = await trabajador_contrato.findAll({
+      where: { estado: "Activo" },
+
+      include: [
+        {
+          model: trabajador,
+          attributes: ["apellido_paterno", "apellido_materno", "nombre"],
+        },
+      ],
+    });
+    const format = trabajadores.map((item) => {
+      return {
+        contrato_id: item.contrato_id,
+        dni: item.trabajador_dni,
+        nombre:
+          item.trabajador.apellido_paterno +
+          " " +
+          item.trabajador.apellido_materno +
+          " " +
+          item.trabajador.nombre,
+      };
+    });
+    res.status(200).json({ data: format });
   } catch (error) {
     console.log(error);
-    res.status(500).json();
+    res.status(500).json({ error });
   }
 };
 
@@ -613,6 +635,66 @@ const getTrabajadorPagoAprobado = async (req, res, next) => {
   }
 };
 
+const getContratoSuspendidoById = async (req, res) => {
+  let id = req.params.id;
+  try {
+    const get = await trabajador_contrato.findAll({
+      where: { trabajador_dni: id },
+
+      include: [
+        { model: suspensiones, include: [{ model: suspensiones_jefes }] },
+        {
+          model: trabajador,
+          attributes: ["apellido_paterno", "apellido_materno", "nombre"],
+        },
+        { model: contrato, attributes: { exclude: ["contrato_id"] } },
+      ],
+    });
+
+    const format = get
+      .map((item) => {
+        const suspensiones = item.suspensiones.map((suspension) => {
+          return {
+            id: suspension?.id,
+            fecha_suspension: suspension?.fecha_suspension,
+            descripcion: suspension?.descripcion,
+            observacion: suspension?.observacion,
+            duracion: suspension?.duracion,
+            fecha_cumplimiento: suspension?.fecha_cumplimiento,
+            nivel_falta: suspension?.nivel_falta,
+            encargado_suspender: suspension?.encargado_suspender,
+            terminado: suspension?.terminado,
+            indeterminado: suspension?.indeterminado,
+            cargo: suspension?.cargo,
+            cooperativa: suspension?.cooperativa,
+            trabajador_contrato_id: suspension?.trabajador_contrato_id,
+            jefes: suspension?.suspensiones_jefes.map((dat) => {
+              return {
+                contrato_id: dat?.contrato_id,
+                dni: dat?.trabajador_id,
+              };
+            }),
+            nombre: `${item.trabajador.apellido_paterno} ${item.trabajador.apellido_materno} ${item.trabajador.nombre}`,
+            contrato: Object.keys(item?.contrato).filter((dat) => {
+              if (dat.finalizado === false) {
+                return dat;
+              } else {
+                return null;
+              }
+            }),
+          };
+        });
+        return suspensiones;
+      })
+      .flat();
+
+    res.status(200).json({ data: format });
+  } catch (error) {
+    console.log(error);
+    res.status(500).json(error);
+  }
+};
+
 module.exports = {
   getTrabajador,
   postTrabajador,
@@ -623,5 +705,6 @@ module.exports = {
   getLastId,
   getTrabajadorPagoAprobado,
   getTrabajarById,
-  getTrabajadorContratoEvaluacion,
+  getTrabajadorConContrato,
+  getContratoSuspendidoById,
 };

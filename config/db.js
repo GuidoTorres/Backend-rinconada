@@ -1,17 +1,14 @@
 const { Sequelize, DataTypes } = require("sequelize");
 
-
-
 const sequelize = new Sequelize({
-  database : process.env.DATABASE,
-  username : process.env.USERNAME,
-  password : process.env.PASSWORD,
-  host : process.env.HOST,
-  dialect : "mysql",
-  port : process.env.PORT,
+  database: process.env.DATABASE,
+  username: process.env.USERNAME,
+  password: process.env.PASSWORD,
+  host: process.env.HOST,
+  dialect: "mysql",
+  port: process.env.PORT,
   define: { timestamps: false, freezeTableName: true },
-  dialectOptions: { decimalNumbers: true }
-
+  dialectOptions: { decimalNumbers: true },
 });
 const dbConnect = async () => {
   try {
@@ -88,7 +85,7 @@ const trabajador_contrato = sequelize.define(
     contrato_id: DataTypes.INTEGER,
     trabajador_dni: DataTypes.STRING,
     evaluacion_id: DataTypes.INTEGER,
-    estado: DataTypes.STRING
+    estado: DataTypes.STRING,
   },
   {
     tableName: "trabajador_contrato",
@@ -452,7 +449,7 @@ const pago = sequelize.define(
     estado: DataTypes.BOOLEAN,
     tipo: DataTypes.STRING,
     volquetes: DataTypes.STRING,
-    unidad_produccion: DataTypes.STRING
+    unidad_produccion: DataTypes.STRING,
   },
   {
     tableName: "pago",
@@ -766,7 +763,7 @@ const requerimiento = sequelize.define(
     firma_jefe: DataTypes.STRING,
     firma_superintendente: DataTypes.STRING,
     jefe: DataTypes.STRING,
-    gerente: DataTypes.STRING
+    gerente: DataTypes.STRING,
   },
   {
     tableName: "requerimiento",
@@ -1118,7 +1115,54 @@ const contrato_pago_trabajador = sequelize.define(
   }
 );
 
+const suspensiones = sequelize.define(
+  "suspensiones",
 
+  {
+    id: {
+      type: DataTypes.INTEGER,
+      primaryKey: true,
+      autoIncrement: true,
+      allowNull: false,
+    },
+    fecha_suspension: DataTypes.STRING,
+    descripcion: DataTypes.STRING,
+    observacion: DataTypes.STRING,
+    duracion: DataTypes.STRING,
+    fecha_cumplimiento: DataTypes.STRING,
+    nivel_falta: DataTypes.STRING,
+    encargado_suspender: DataTypes.STRING,
+    terminado: DataTypes.BOOLEAN,
+    indeterminado: DataTypes.BOOLEAN,
+    cargo: DataTypes.STRING,
+    cooperativa: DataTypes.STRING,
+    trabajador_contrato_id: DataTypes.INTEGER,
+  },
+  {
+    tableName: "suspensiones",
+    timestamp: true,
+  }
+);
+
+const suspensiones_jefes = sequelize.define(
+  "suspensiones_jefes",
+
+  {
+    id: {
+      type: DataTypes.INTEGER,
+      primaryKey: true,
+      autoIncrement: true,
+      allowNull: false,
+    },
+    suspension_id: DataTypes.INTEGER,
+    trabajador_id: DataTypes.STRING,
+    contrato_id: DataTypes.INTEGER,
+  },
+  {
+    tableName: "suspensiones_jefes",
+    timestamp: true,
+  }
+);
 
 gerencia.hasMany(area, {
   foreignKey: "gerencia_id",
@@ -1238,15 +1282,15 @@ trabajador_contrato.belongsTo(contrato, {
   onDelete: "CASCADE",
 });
 
-evaluacion.hasMany(trabajador_contrato,{
+evaluacion.hasMany(trabajador_contrato, {
   foreignKey: "evaluacion_id",
-  onDelete:"Cascade"
-})
+  onDelete: "Cascade",
+});
 
-trabajador_contrato.belongsTo(evaluacion,{
+trabajador_contrato.belongsTo(evaluacion, {
   foreignKey: "evaluacion_id",
-  onDelete: "Cascade"
-})
+  onDelete: "Cascade",
+});
 
 asociacion.hasMany(contrato, {
   foreignKey: "asociacion_id",
@@ -1537,6 +1581,22 @@ contrato_pago_trabajador.belongsTo(trabajador, {
   onDelete: "CASCADE",
 });
 
+trabajador_contrato.hasMany(suspensiones, {
+  foreignKey: "trabajador_contrato_id",
+});
+suspensiones.belongsTo(trabajador_contrato, {
+  foreignKey: "trabajador_contrato_id",
+});
+
+suspensiones.hasMany(suspensiones_jefes, { foreignKey: "suspension_id" });
+suspensiones_jefes.belongsTo(suspensiones, { foreignKey: "suspension_id" });
+
+trabajador.hasMany(suspensiones_jefes, { foreignKey: "trabajador_id" });
+suspensiones_jefes.belongsTo(trabajador, { foreignKey: "trabajador_id" });
+
+contrato.hasMany(suspensiones_jefes, { foreignKey: "contrato_id" });
+suspensiones_jefes.belongsTo(contrato, { foreignKey: "contrato_id" });
+
 module.exports = {
   sequelize,
   DataTypes,
@@ -1583,4 +1643,6 @@ module.exports = {
   trabajador_contrato,
   aprobacion_contrato_pago,
   contrato_pago_trabajador,
+  suspensiones,
+  suspensiones_jefes,
 };

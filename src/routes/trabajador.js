@@ -7,10 +7,11 @@ const checkAuth = require("../middleware/auth");
 const checkAuditoria = require("../middleware/auditoria");
 
 router.get("/", trabajador.getTrabajador);
-router.get("/contrato", trabajador.getTrabajadorContratoEvaluacion)
+router.get("/contrato", trabajador.getTrabajadorConContrato)
 router.get("/:id", trabajador.getTrabajarById);
 router.get("/aprobado",checkAuth, trabajador.getTrabajadorPagoAprobado);
 router.get("/last/id",checkAuth, trabajador.getLastId);
+router.get("/contrato/suspendido/:id", trabajador.getContratoSuspendidoById)
 router.post("/bulk",checkAuth, multer(), checkAuditoria,trabajador.postMultipleTrabajador);
 router.post("/",checkAuth, images(), checkAuditoria,trabajador.postTrabajador);
 router.put("/:id",checkAuth, images(),checkAuditoria, trabajador.updateTrabajador);
