@@ -38,18 +38,18 @@ const getAsociacion = async (req, res, next) => {
           include: [
             {
               model: trabajador_contrato,
+              where: { estado: "Activo" },
               include: [
                 {
                   model: contrato,
                   attributes: { exclude: ["contrato_id"] },
-                  where: { finalizado: { [Op.not]: true } },
                 },
                 {
                   model: evaluacion,
-                  where: { finalizado: { [Op.not]: true } },
                 },
                 { model: suspensiones },
               ],
+              required:false
             },
           ],
         },

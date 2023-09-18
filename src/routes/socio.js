@@ -5,7 +5,7 @@ const checkAuth = require("../middleware/auth");
 
 
 
-router.get("/",checkAuth, socio.getSocio)
+router.get("/",socio.getSocio)
 router.post("/",checkAuth,checkAuditoria, socio.postSocio)
 router.put("/:id",checkAuth, checkAuditoria,socio.updateSocio)
 router.delete("/:id",checkAuth,checkAuditoria, socio.deleteSocio)

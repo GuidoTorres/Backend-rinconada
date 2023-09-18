@@ -99,6 +99,7 @@ const getTrabajador = async (req, res, next) => {
                 "campamento_id",
                 "cooperativa",
               ],
+              required:false
             },
             {
               model: contrato,
@@ -130,6 +131,7 @@ const getTrabajador = async (req, res, next) => {
               required: false,
             },
           ],
+          required:false
         },
       ],
       // offset: (page - 1) * pageSize,

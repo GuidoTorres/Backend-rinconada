@@ -19,7 +19,6 @@ const {
 } = require("../../config/db");
 const { Op } = require("sequelize");
 const dayjs = require("dayjs");
-const { log } = require("sharp/lib/libvips");
 
 //lista de trabajadores y planillas para la vista de planillas
 const getPlanilla = async (req, res, next) => {
@@ -156,35 +155,23 @@ const getPlanilla = async (req, res, next) => {
                   : curr;
               })
             : null;
-          const contratoActivo = item?.contratos?.find(
-            (data) => data.finalizado === false
-          );
+          const contratoActivo = item?.contratos[0];
 
-          const fechaInicioContrato = dayjs(
-            item?.contratos?.find((data) => data.finalizado === false)
-              ?.fecha_inicio
-          );
-          const fechaFinContrato =
-            dayjs(
-              item?.contratos?.find((data) => data.finalizado === false)
-                ?.fecha_fin_estimada
-            ) ||
-            dayjs(
-              item?.contratos?.find((data) => data.finalizado === false)
-                ?.fecha_fin
-            );
+          const fechaInicioContrato = dayjs(item.contratos[0].fecha_inicio);
+          const fechaFinContrato = dayjs(item.contratos[0].fecha_fin_estimada);
 
           const asistencia =
             trabajadorCodigoMenor?.trabajador_asistencia?.filter((data) => {
               const fechaAsistencia = dayjs(data.asistencium.fecha);
               return (
-                ["Asistio", "Comisión"].includes(data.asistencia) &&
                 (fechaAsistencia.isSame(fechaInicioContrato) ||
                   fechaAsistencia.isAfter(fechaInicioContrato)) &&
-                (fechaAsistencia.isSame(fechaFinContrato) ||
-                  fechaAsistencia.isBefore(fechaFinContrato))
+                (fechaAsistencia.isBefore(fechaFinContrato) ||
+                  fechaAsistencia.isSame(fechaFinContrato)) &&
+                (data.asistencia === "Asistio" ||
+                  data.asistencia === "Comisión")
               );
-            }).length;
+            }).length
 
           return {
             nombre: item?.nombre,
@@ -222,10 +209,13 @@ const getPlanilla = async (req, res, next) => {
       const contratoFiltrado = item?.trabajador_contratos;
 
       // Encuentra la fecha de inicio más temprana y la fecha de finalización más tardía
-      let fechaInicioContrato = contratoFiltrado[0]?.contrato?.fecha_inicio;
-      let fechaFinContrato =
-        contratoFiltrado[0]?.contrato?.fecha_fin_estimada ||
-        contratoFiltrado[0]?.contrato?.fecha_fin;
+      let fechaInicioContrato = dayjs(
+        contratoFiltrado[0]?.contrato?.fecha_inicio
+      );
+      let fechaFinContrato = dayjs(
+        contratoFiltrado[0]?.contrato?.fecha_fin_estimada
+      );
+
       contratoFiltrado.forEach((dat) => {
         if (dayjs(dat?.contrato?.fecha_inicio).isBefore(fechaInicioContrato)) {
           fechaInicioContrato = dat?.contrato?.fecha_inicio;
@@ -245,8 +235,8 @@ const getPlanilla = async (req, res, next) => {
         return (
           (fechaAsistencia.isSame(fechaInicioContrato) ||
             fechaAsistencia.isAfter(fechaInicioContrato)) &&
-          (fechaAsistencia.isBefore(fechaFinContrato) ||
-            fechaAsistencia.isSame(fechaFinContrato)) &&
+          (fechaAsistencia.isSame(fechaFinContrato) ||
+            fechaAsistencia.isBefore(fechaFinContrato)) &&
           (data.asistencia === "Asistio" || data.asistencia === "Comisión")
         );
       }).length;
@@ -1088,9 +1078,6 @@ const getTareoAsociacion = async (req, res, next) => {
           (tc) => tc.trabajador
         );
 
-        console.log("====================================");
-        console.log(contrato);
-        console.log("====================================");
 
         let fechaInicioSubarray = null;
         let fechaFinSubarray = null;
@@ -1247,6 +1234,21 @@ const getTareoAsociacion = async (req, res, next) => {
     res.status(500).json();
   }
 };
+function getAsistenciaDateRange(trabajadores) {
+  if (trabajadores.length === 0) {
+    return { start: null, end: null };
+  }
+
+  const fechaInicio = dayjs(trabajadores[0]?.asistencium?.fecha);
+  const fechaFin = dayjs(
+    trabajadores[trabajadores.length - 1].asistencium.fecha
+  );
+
+  return {
+    start: fechaInicio.format("DD-MM-YYYY"),
+    end: fechaFin.format("DD-MM-YYYY"),
+  };
+}
 
 const juntarTeletrans = async (req, res, next) => {
   try {

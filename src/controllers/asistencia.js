@@ -490,7 +490,6 @@ const updateTrabajadorAsistencia = async (req, res, next) => {
     const updateAsistencia = await trabajadorAsistencia.update(info);
     return res.status(200).json({ msg: "Actualizado con éxito!", status: 200 });
 
-    next();
   } catch (error) {
     console.log(error);
     res.status(500).json({ msg: "No se pudo actualizar.", status: 500 });

@@ -270,21 +270,21 @@ const postContratoAsociacion = async (req, res, next) => {
     if (req.body.trabajadores.length > 0) {
       // Crear contrato con transacción
       const post = await contrato.create(info, { transaction });
-      const contraPago = req?.body?.trabajadores?.map((item) => {
-        return {
-          trabajador_dni: item,
-          contrato_id: post.id,
-        };
-      });
 
-      // Crear trabajador_contrato con transacción
-      const createContraPago = await trabajador_contrato.bulkCreate(
-        contraPago,
-        {
-          ignoreDuplicates: false,
-          transaction, // incluir la transacción aquí
-        }
-      );
+      // Actualizar trabajador_contrato con transacción
+      for (let dni of req.body.trabajadores) {
+        await trabajador_contrato.update(
+          { contrato_id: post.id },
+          {
+            where: {
+              trabajador_dni: dni,
+              evaluacion_id: { [Op.ne]: null }, // se asegura que evaluacion_id no sea nulo
+              contrato_id: null, // se asegura que contrato_id sea nulo
+            },
+            transaction, // incluir la transacción aquí
+          }
+        );
+      }
       if (post) {
         let volquete = parseInt(req.body?.volquete) || 0;
         let teletran = parseInt(req.body?.teletran) || 0;
@@ -307,7 +307,7 @@ const postContratoAsociacion = async (req, res, next) => {
           .json({ msg: "Contrato creado con éxito!", status: 200 });
       }
     } else {
-      await transaction.rollback(); // Revocar la transacción
+      await transaction.rollback();
       return res
         .status(200)
         .json({ msg: "Evaluación de trabajadores incompletas!", status: 401 });
@@ -394,12 +394,12 @@ const updateContrato = async (req, res, next) => {
 const deleteContrato = async (req, res, next) => {
   let id = req.params.id;
   try {
-    let removeTtrans = await teletrans.destroy({ where: { contrato_id: id } });
-    let contra_pago = await contrato_pago.destroy({
+    await teletrans.destroy({ where: { contrato_id: id } });
+    await contrato_pago.destroy({
       where: { contrato_id: id },
     });
 
-    let aproba = await aprobacion_contrato_pago.destroy({
+    await aprobacion_contrato_pago.destroy({
       where: { contrato_id: id },
     });
     await trabajador_contrato.update(
@@ -465,6 +465,14 @@ const activarContrato = async (req, res) => {
       { finalizado: !evaluacionActual.finalizado },
       { where: { id: contratoEvaluacion.evaluacion_id } }
     );
+
+    if (contratoActual.finalizado) {
+      contratoEvaluacion.estado = "Finalizado";
+      contratoEvaluacion.save();
+    } else {
+      contratoEvaluacion.estado = "Activo";
+      contratoEvaluacion.save();
+    }
 
     return res.status(200).json({
       msg: `Se ${
@@ -633,10 +641,11 @@ const registrarSuspension = async (req, res) => {
     // Asociar jefes
     for (let jefeData of jefes) {
       let parsedJefe = JSON.parse(jefeData);
+      console.log(parsedJefe);
       await suspensiones_jefes.create(
         {
           trabajador_id: parseInt(parsedJefe.dni),
-          contrato_id: parseInt(parsedJefe.contrato_id),
+          contrato_id: (parsedJefe.contrato_id)?.toString(),
           suspension_id: suspension.id,
         },
         { transaction: t }
@@ -673,7 +682,7 @@ const registrarSuspension = async (req, res) => {
   } catch (error) {
     await t.rollback();
     console.log(error);
-    res.status(500).send({ msg: "Error interno del servidor", status:500 });
+    res.status(500).send({ msg: "Error interno del servidor", status: 500 });
   }
 };
 

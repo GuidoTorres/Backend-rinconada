@@ -222,9 +222,6 @@ const deleteEvaluacion = async (req, res, next) => {
       .status(200)
       .json({ msg: "Evaluación eliminada con éxito!", status: 200 });
   } catch (error) {
-    console.log("====================================");
-    console.log(error);
-    console.log("====================================");
     res
       .status(500)
       .json({ msg: "No se pudo eliminar la evaluación.", status: 500 });
@@ -244,6 +241,13 @@ const activarEvaluacion = async (req, res) => {
     const nuevoEstado = !evaluacionActual.finalizado;
 
     await evaluacion.update({ finalizado: nuevoEstado }, { where: { id: id } });
+    if(nuevoEstado){
+      await trabajador_contrato.update({estado: "Finalizado"}, {where:{evaluacion_id: id}})
+
+    }else{
+      await trabajador_contrato.update({estado: "Activo"}, {where:{evaluacion_id: id}})
+
+    }
 
     return res.status(200).json({
       msg: `Se ${
