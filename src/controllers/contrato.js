@@ -328,6 +328,7 @@ const updateContrato = async (req, res, next) => {
       fecha_fin_estimada: req.body.fecha_fin,
     };
     delete info.contrato_id;
+    delete info.estado
 
     await contrato.update(info, {
       where: { id: id },
