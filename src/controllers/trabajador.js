@@ -184,8 +184,8 @@ const getTrabajador = async (req, res, next) => {
           deshabilitado: item?.deshabilitado,
           foto: item?.foto,
           eliminar: item?.eliminar,
-          evaluacion: trabajador_contrato[0]?.evaluacion || null,
-          contrato: trabajador_contrato[0]?.contrato || null,
+          evaluacion: trabajador_contrato[0]?.evaluacion ,
+          contrato: trabajador_contrato[0]?.contrato ,
           suspendido:
             item?.trabajador_contratos
               ?.at(-1)

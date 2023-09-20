@@ -1090,6 +1090,8 @@ const getTareoAsociacion = async (req, res, next) => {
               ? prev
               : curr;
           });
+
+          console.log(trabajadorMenorCodigo);
           asistenciasPrimerTrabajador =
             trabajadorMenorCodigo.trabajador_asistencia
               .filter((asistencia) => {
@@ -1140,7 +1142,7 @@ const getTareoAsociacion = async (req, res, next) => {
           }
 
           if (
-            contador >= minAsistencias ||
+            contador === minAsistencias ||
             currentIndex === asistenciasPrimerTrabajador.length - 1
           ) {
             fechaFinSubarray = asistencia.asistencium.fecha;
