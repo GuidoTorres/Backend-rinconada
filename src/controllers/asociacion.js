@@ -13,7 +13,6 @@ const {
 const XLSX = require("xlsx");
 const { Op } = require("sequelize");
 const dayjs = require("dayjs");
-const moment = require("moment");
 require("moment/locale/es");
 // Cargar idioma en español
 const es = require("dayjs/locale/es");

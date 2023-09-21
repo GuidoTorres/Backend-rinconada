@@ -174,42 +174,52 @@ const getContratoAsociacionById = async (req, res, next) => {
 //crear contrato para trabajadores individuales
 const postContrato = async (req, res, next) => {
   try {
-    if (!req.body.trabajador_id) {
+    const trabajadorId = req.body.trabajador_id;
+
+    if (!trabajadorId) {
       return res.status(500).json({
         msg: "No se pudo crear el contrato, el trabajador_id es requerido.",
         status: 500,
       });
     }
 
-    const getEva = await evaluacion.findAll({
-      where: { trabajador_id: req.body.trabajador_id },
-      attributes: { exclude: ["contrato_id"] },
-    });
-
-    const filterEva = getEva.filter((item) => item.finalizado === false);
-
-    if (filterEva.length === 0) {
-      return res.status(500).json({
-        msg: "No se pudo registrar, el trabajador no tiene una evaluación activa.",
-        status: 500,
-      });
-    }
-
-    const obj = { ...req.body, fecha_fin_estimada: req.body.fecha_fin };
-    const post = await contrato.create(obj);
-    const getTrabaContrato = await trabajador_contrato.findOne({
+    // Comprobar si existe un registro con evaluacion_id para el trabajador
+    const tieneEvaluacion = await trabajador_contrato.findOne({
       where: {
-        trabajador_dni: req.body.trabajador_id,
-        contrato_id: null,
+        trabajador_dni: trabajadorId,
+        evaluacion_id: { [Op.ne]: null },
         estado: "Activo",
       },
     });
 
-    // Si se encuentra el registro, actualizarlo con el id del contrato
-    if (getTrabaContrato) {
-      getTrabaContrato.contrato_id = post.id;
-      await getTrabaContrato.save();
+    if (!tieneEvaluacion) {
+      return res.status(500).json({
+        msg: "No se pudo registrar, el trabajador debe tener una evaluación antes de crear el contrato.",
+        status: 500,
+      });
     }
+
+    // Comprobar si ya hay un contrato activo para el trabajador
+    const contratoActivo = await trabajador_contrato.findOne({
+      where: {
+        trabajador_dni: trabajadorId,
+        contrato_id: { [Op.ne]: null },
+        estado: "Activo",
+      },
+    });
+
+    if (contratoActivo) {
+      return res.status(500).json({
+        msg: "No se pudo registrar, el trabajador ya tiene un contrato activo.",
+        status: 500,
+      });
+    }
+
+    // Crear el contrato y actualizar trabajador_contrato con el contrato_id
+    const obj = { ...req.body, fecha_fin_estimada: req.body.fecha_fin };
+    const post = await contrato.create(obj);
+    tieneEvaluacion.contrato_id = post.id;
+    await tieneEvaluacion.save();
 
     let volquete = parseInt(req.body?.volquete) || 0;
     let teletran = parseInt(req.body?.teletran) || 0;
@@ -266,6 +276,27 @@ const postContratoAsociacion = async (req, res, next) => {
   };
   try {
     const transaction = await sequelize.transaction();
+    const trabajadoresActivos = await trabajador_contrato.findAll({
+      where: {
+        trabajador_dni: { [Op.in]: req.body.trabajadores },
+      },
+      attributes: ['trabajador_dni', 'evaluacion_id', 'estado']  // Solo necesitamos el DNI y evaluacion_id
+    });
+    
+    // Filtrar aquellos que no tienen una evaluación válida (evaluacion_id nulo o no definido).
+    const trabajadoresSinEvaluacion = trabajadoresActivos.filter(t => t.evaluacion_id && t.estado === "Activo");
+
+    console.log(trabajadoresSinEvaluacion);
+  
+    // Si encontramos trabajadores sin evaluación, retornamos un error.
+    if (trabajadoresSinEvaluacion) {
+      
+      return res.status(400).json({
+        msg: `Todos los trabajadores deben tener una evaluación activa para registra el contrato.`,
+        status: 400,
+      });
+    }
+  
 
     if (req.body.trabajadores.length > 0) {
       // Crear contrato con transacción
@@ -328,7 +359,7 @@ const updateContrato = async (req, res, next) => {
       fecha_fin_estimada: req.body.fecha_fin,
     };
     delete info.contrato_id;
-    delete info.estado
+    delete info.estado;
 
     await contrato.update(info, {
       where: { id: id },
@@ -645,8 +676,8 @@ const registrarSuspension = async (req, res) => {
       console.log(parsedJefe);
       await suspensiones_jefes.create(
         {
-          trabajador_id: parseInt(parsedJefe.dni),
-          contrato_id: (parsedJefe.contrato_id)?.toString(),
+          trabajador_id: parsedJefe.dni?.toString(),
+          contrato_id: parsedJefe.contrato_id,
           suspension_id: suspension.id,
         },
         { transaction: t }

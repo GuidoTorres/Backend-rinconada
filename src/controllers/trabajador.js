@@ -152,7 +152,7 @@ const getTrabajador = async (req, res, next) => {
         for (let susp of item.suspensiones) {
     
           // 3. Verifica la fecha_cumplimiento usando dayjs.
-          if (dayjs().isAfter(susp.fecha_cumplimiento)) {  // Si la fecha actual es después de la fecha de cumplimiento
+          if (dayjs().isAfter(susp.fecha_cumplimiento)) { 
     
             // Actualiza el campo 'terminado' a true.
             await suspensiones.update({ terminado: true }, {

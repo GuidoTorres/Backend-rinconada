@@ -40,7 +40,7 @@ const getEvaluacionById = async (req, res, next) => {
             {
               model: evaluacion,
             },
-            {model:suspensiones}
+            { model: suspensiones },
           ],
         },
       ],
@@ -48,59 +48,63 @@ const getEvaluacionById = async (req, res, next) => {
 
     const obj = evaluaciones
       .map((trabajador) =>
-        trabajador.trabajador_contratos.map((data) => {
-          return {
-            evaluacion_id: data?.evaluacion.id,
-            trabajador_id: trabajador?.dni,
-            fecha_evaluacion_tabla: dayjs(
-              data?.evaluacion?.fecha_evaluacion
-            ).format("DD-MM-YYYY"),
-            fecha_evaluacion: dayjs(data?.evaluacion?.fecha_evaluacion),
-            evaluacion_laboral: data?.evaluacion?.evaluacion_laboral,
-            finalizado: data?.evaluacion?.finalizado,
-            antecedentes: data?.evaluacion?.antecedentes,
-            capacitacion_gema: data?.evaluacion?.capacitacion_gema,
-            capacitacion_sso: data?.evaluacion?.capacitacion_sso,
-            gerencia_id: data?.evaluacion?.gerencia_id,
-            area_id: data?.evaluacion?.area_id,
-            puesto_id: data?.evaluacion?.puesto_id,
-            campamento_id: data?.evaluacion?.campamento_id,
-            diabetes: data?.evaluacion?.diabetes,
-            emo: data?.evaluacion?.emo,
-            imc: data?.evaluacion?.imc,
-            presion_arterial: data?.evaluacion?.presion_arterial,
-            pulso: data?.evaluacion?.pulso,
-            saturacion: data?.evaluacion?.saturacion,
-            temperatura: data?.evaluacion?.temperatura,
-            aprobado: data?.evaluacion?.aprobado,
-            recomendado_por: data?.evaluacion?.recomendado_por,
-            cooperativa: data?.evaluacion?.cooperativa,
-            condicion_cooperativa: data?.evaluacion?.condicion_cooperativa,
-            nombre:
-              trabajador?.nombre +
-              " " +
-              trabajador?.apellido_paterno +
-              " " +
-              trabajador?.apellido_materno,
-            control: data?.evaluacion?.control,
-            topico: data?.evaluacion?.topico,
-            seguridad: data?.evaluacion?.seguridad,
-            medio_ambiente: data?.evaluacion?.medio_ambiente,
-            fiscalizador: data?.evaluacion?.fiscalizador,
-            fiscalizador_aprobado: data?.evaluacion?.fiscalizador_aprobado,
-            topico_observacion: data?.evaluacion?.topico_observacion,
-            control_observacion: data?.evaluacion?.control_observacion,
-            seguridad_observacion: data?.evaluacion?.seguridad_observacion,
-            medio_ambiente_observacion:
-              data?.evaluacion?.medio_ambiente_observacion,
-            recursos_humanos: data?.evaluacion?.recursos_humanos,
-            recursos_humanos_observacion:
-              data?.evaluacion?.recursos_humanos_observacion,
-            suspendido: data?.contrato?.suspendido || null,
-            nota_contrato: data?.contrato?.nota_contrato || null,
-            estado: data.estado,
-          };
-        })
+        trabajador.trabajador_contratos
+          ?.map((data) => {
+            return {
+              evaluacion_id: data?.evaluacion?.id,
+              trabajador_id: trabajador?.dni,
+              fecha_evaluacion_tabla: dayjs(
+                data?.evaluacion?.fecha_evaluacion
+              ).format("DD-MM-YYYY"),
+              fecha_evaluacion: dayjs(
+                data?.evaluacion?.fecha_evaluacion
+              ).format("YYYY-MM-DD"),
+              evaluacion_laboral: data?.evaluacion?.evaluacion_laboral,
+              finalizado: data?.evaluacion?.finalizado,
+              antecedentes: data?.evaluacion?.antecedentes,
+              capacitacion_gema: data?.evaluacion?.capacitacion_gema,
+              capacitacion_sso: data?.evaluacion?.capacitacion_sso,
+              gerencia_id: data?.evaluacion?.gerencia_id,
+              area_id: data?.evaluacion?.area_id,
+              puesto_id: data?.evaluacion?.puesto_id,
+              campamento_id: data?.evaluacion?.campamento_id,
+              diabetes: data?.evaluacion?.diabetes,
+              emo: data?.evaluacion?.emo,
+              imc: data?.evaluacion?.imc,
+              presion_arterial: data?.evaluacion?.presion_arterial,
+              pulso: data?.evaluacion?.pulso,
+              saturacion: data?.evaluacion?.saturacion,
+              temperatura: data?.evaluacion?.temperatura,
+              aprobado: data?.evaluacion?.aprobado,
+              recomendado_por: data?.evaluacion?.recomendado_por,
+              cooperativa: data?.evaluacion?.cooperativa,
+              condicion_cooperativa: data?.evaluacion?.condicion_cooperativa,
+              nombre:
+                trabajador?.nombre +
+                " " +
+                trabajador?.apellido_paterno +
+                " " +
+                trabajador?.apellido_materno,
+              control: data?.evaluacion?.control,
+              topico: data?.evaluacion?.topico,
+              seguridad: data?.evaluacion?.seguridad,
+              medio_ambiente: data?.evaluacion?.medio_ambiente,
+              fiscalizador: data?.evaluacion?.fiscalizador,
+              fiscalizador_aprobado: data?.evaluacion?.fiscalizador_aprobado,
+              topico_observacion: data?.evaluacion?.topico_observacion,
+              control_observacion: data?.evaluacion?.control_observacion,
+              seguridad_observacion: data?.evaluacion?.seguridad_observacion,
+              medio_ambiente_observacion:
+                data?.evaluacion?.medio_ambiente_observacion,
+              recursos_humanos: data?.evaluacion?.recursos_humanos,
+              recursos_humanos_observacion:
+                data?.evaluacion?.recursos_humanos_observacion,
+              suspendido: data?.contrato?.suspendido || null,
+              nota_contrato: data?.contrato?.nota_contrato || null,
+              estado: data.estado,
+            };
+          })
+          .filter((item) => item.evaluacion_id)
       )
       .flat();
 
@@ -152,10 +156,13 @@ const postEvaluacion = async (req, res, next) => {
 
   const t = await sequelize.transaction();
   try {
-    const get = await evaluacion.findAll({
-      where: { trabajador_id: info.trabajador_id },
+    const get = await trabajador_contrato.findOne({
+      where: {
+        trabajador_dni: info.trabajador_id,
+        estado: "Activo",
+        evaluacion_id: { [Op.not]: null },
+      },
     });
-    const filter = get.filter((item) => item.finalizado === false);
 
     const { fecha_evaluacion } = req.body;
 
@@ -166,7 +173,7 @@ const postEvaluacion = async (req, res, next) => {
       });
     }
 
-    if (filter.length > 0) {
+    if (get) {
       return res.status(500).json({
         msg: "No se pudo crear la evaluación, el trabajador tiene una evaluación activa.",
         status: 500,
@@ -175,20 +182,35 @@ const postEvaluacion = async (req, res, next) => {
 
     const post = await evaluacion.create(info, { transaction: t });
 
-    await trabajador_contrato.create(
-      {
+    const activeContract = await trabajador_contrato.findOne({
+      where: {
         trabajador_dni: info.trabajador_id,
-        evaluacion_id: post.id,
         estado: "Activo",
+        contrato_id: { [Op.not]: null },
+        evaluacion_id: null,
       },
-      { transaction: t }
-    );
+    });
+
+    if (activeContract) {
+      activeContract.evaluacion_id = post.id;
+      await activeContract.save({ transaction: t });
+    } else {
+      await trabajador_contrato.create(
+        {
+          trabajador_dni: info.trabajador_id,
+          evaluacion_id: post.id,
+          estado: "Activo",
+        },
+        { transaction: t }
+      );
+    }
     await t.commit();
 
     return res
       .status(200)
       .json({ msg: "Evaluación creada con éxito!", status: 200 });
   } catch (error) {
+    console.log(error);
     await t.rollback();
     res
       .status(500)
@@ -241,12 +263,16 @@ const activarEvaluacion = async (req, res) => {
     const nuevoEstado = !evaluacionActual.finalizado;
 
     await evaluacion.update({ finalizado: nuevoEstado }, { where: { id: id } });
-    if(nuevoEstado){
-      await trabajador_contrato.update({estado: "Finalizado"}, {where:{evaluacion_id: id}})
-
-    }else{
-      await trabajador_contrato.update({estado: "Activo"}, {where:{evaluacion_id: id}})
-
+    if (nuevoEstado) {
+      await trabajador_contrato.update(
+        { estado: "Finalizado" },
+        { where: { evaluacion_id: id } }
+      );
+    } else {
+      await trabajador_contrato.update(
+        { estado: "Activo" },
+        { where: { evaluacion_id: id } }
+      );
     }
 
     return res.status(200).json({
