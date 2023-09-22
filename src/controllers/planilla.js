@@ -23,6 +23,81 @@ const dayjs = require("dayjs");
 //lista de trabajadores y planillas para la vista de planillas
 const getPlanilla = async (req, res, next) => {
   try {
+    // const trabajadores = await trabajador_contrato.findAll({
+    //   where: { estado: "Activo" },
+    //   include: [
+    //     {
+    //       model: trabajador,
+    //       where: {
+    //         asociacion_id: { [Op.is]: null },
+    //         deshabilitado: { [Op.not]: true },
+    //       },
+    //       attributes: [
+    //         "nombre",
+    //         "apellido_paterno",
+    //         "apellido_materno",
+    //         "dni",
+    //         "fecha_nacimiento",
+    //         "telefono",
+    //       ],
+    //       include: [
+    //         {
+    //           model: trabajadorAsistencia,
+    //           attributes: ["asistencia"],
+    //           include: [
+    //             {
+    //               model: asistencia,
+    //               attributes: ["fecha"],
+    //               where: {
+    //                 fecha: {
+    //                   [Op.and]: [
+    //                     sequelize.literal("`fecha` >= (SELECT `fecha_inicio` FROM `contrato` WHERE `contrato`.`id` = `trabajador_contrato`.`contrato_id`)"),
+    //                     sequelize.literal("`fecha` <= COALESCE((SELECT `fecha_fin` FROM `contrato` WHERE `contrato`.`id` = `trabajador_contrato`.`contrato_id`), (SELECT `fecha_fin_estimada` FROM `contrato` WHERE `contrato`.`id` = `trabajador_contrato`.`contrato_id`))")
+    //                   ]
+    //                 }
+    //               },
+    //             },
+    //           ],
+    //         },
+    //       ],
+    //     },
+    //     {
+    //       model: contrato,
+    //       attributes: [
+    //         "suspendido",
+    //         "fecha_inicio",
+    //         "fecha_fin",
+    //         "fecha_fin_estimada",
+    //         "periodo_trabajo",
+    //         "suspendido",
+    //       ],
+    //       include: [
+    //         { model: teletrans },
+    //         {
+    //           model: campamento,
+    //           attributes: { exclude: ["campamento_id"] },
+    //         },
+    //         { model: gerencia, attributes: ["nombre"] },
+    //         { model: area, attributes: ["nombre"] },
+    //         {
+    //           model: cargo,
+    //           attributes: ["nombre"],
+    //         },
+    //       ],
+    //     },
+    //     {
+    //       model: evaluacion,
+    //       attributes: [
+    //         "id",
+    //         "condicion_cooperativa",
+    //         "recomendado_por",
+    //         "cooperativa",
+    //       ],
+    //     },
+    //   ],
+    //   count: true,
+    // });
+
     const gettraba = trabajador.findAll({
       where: {
         asociacion_id: { [Op.is]: null },
@@ -95,7 +170,7 @@ const getPlanilla = async (req, res, next) => {
         },
       ],
     });
-    
+
     const getasoci = asociacion.findAll({
       include: [
         {
@@ -171,7 +246,7 @@ const getPlanilla = async (req, res, next) => {
                 (data.asistencia === "Asistio" ||
                   data.asistencia === "Comisión")
               );
-            }).length
+            }).length;
 
           return {
             nombre: item?.nombre,
@@ -289,7 +364,7 @@ const getPlanilla = async (req, res, next) => {
       };
     });
 
-    return res.status(200).json({ data: finalConId });
+    return res.status(200).json({ data: trabajadores });
   } catch (error) {
     console.log(error);
     res.status(500).json();
@@ -1077,7 +1152,6 @@ const getTareoAsociacion = async (req, res, next) => {
         const trabajadores = contrato.trabajador_contratos.map(
           (tc) => tc.trabajador
         );
-
 
         let fechaInicioSubarray = null;
         let fechaFinSubarray = null;

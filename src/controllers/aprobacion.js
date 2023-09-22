@@ -11,6 +11,7 @@ const {
   trabajador_contrato,
   cargo,
   teletrans,
+  campamento,
 } = require("../../config/db");
 require("jspdf-autotable");
 
@@ -57,7 +58,6 @@ const obtenerRangoQuincena = (indice, fechaInicio, fechaFin) => {
   return `${ordinal} quincena de ${fechaInicio} - ${fechaFin}`;
 };
 
-
 // para obtener la lista de asistencia en las aprobaciones, para la hoja de tareo
 const aprobacionAsistencias = async (req, res, next) => {
   const { asociacion_id, dni, fecha_inicio, fecha_fin, quincena, contrato_id } =
@@ -82,6 +82,7 @@ const aprobacionAsistencias = async (req, res, next) => {
                 model: aprobacion_contrato_pago,
                 where: { subarray_id: quincena },
               },
+              { model: campamento },
               { model: area },
               { model: teletrans },
             ],
@@ -145,6 +146,7 @@ const aprobacionAsistencias = async (req, res, next) => {
       });
 
       const contratoAsociacion = dataContratos?.area?.nombre;
+      const campamento = dataContratos?.campamento?.nombre
       const pago = dataContratos?.teletrans[0];
 
       const asistenciasObj = trabajadorContratos.map((trabajador, index) => {
@@ -162,7 +164,8 @@ const aprobacionAsistencias = async (req, res, next) => {
           obj.firma_jefe = aprobaciones.firma_jefe;
           obj.firma_gerente = aprobaciones.firma_gerente;
           obj.jefe = aprobaciones.jefe;
-          obj.gerente= aprobaciones.gerente
+          obj.gerente = aprobaciones.gerente;
+          obj.campamento = campamento
           obj.nro = index + 1;
           obj.textoQuincena = obtenerRangoQuincena(
             parseInt(aprobaciones.subarray_id),
@@ -187,11 +190,12 @@ const aprobacionAsistencias = async (req, res, next) => {
           obj.textoQuincea = "";
           obj.firma_jefe = "";
           obj.firma_gerente = "";
-          obj.jefe="";
-          obj.gerente="";
+          obj.jefe = "";
+          obj.gerente = "";
           obj.nro = index + 1;
           obj.observaciones = "";
           obj.textoQuincea = "";
+          obj.campamento = ""
           obj.dni = trabajador?.dataValues.dni;
           obj.telefono = trabajador?.dataValues.telefono;
           obj.asociacion = asociacionAsistencia.nombre;
@@ -226,7 +230,8 @@ const aprobacionAsistencias = async (req, res, next) => {
               fecha !== "textoQuincena" &&
               fecha !== "observaciones" &&
               fecha !== "jefe" &&
-              fecha !== "gerente" 
+              fecha !== "gerente" &&
+              fecha !== "campamento"
             ) {
               obj[fecha] = "";
             }
@@ -275,9 +280,10 @@ const aprobacionAsistencias = async (req, res, next) => {
             fecha !== "teletrans" &&
             fecha !== "id" &&
             fecha !== "textoQuincena" &&
-            fecha !== "observaciones"&&
+            fecha !== "observaciones" &&
             fecha !== "jefe" &&
-            fecha !== "gerente" 
+            fecha !== "gerente"&&
+            fecha !== "campamento"
           ) {
             acc[fecha] =
               asistencias[fecha] === "Permiso"
@@ -320,6 +326,7 @@ const aprobacionAsistencias = async (req, res, next) => {
                   },
                   { model: area },
                   { model: cargo, attributes: { exclude: ["cargo_id"] } },
+                  {model: campamento, attributes: { exclude: ["campamento_id"] }},
                   { model: teletrans },
                 ],
               },
@@ -359,6 +366,9 @@ const aprobacionAsistencias = async (req, res, next) => {
         .toString();
       const areaNombre = trabajadorAsis?.trabajador_contratos
         ?.map((item) => item?.contrato?.area?.nombre)
+        .toString();
+        const campamentoNombre = trabajadorAsis?.trabajador_contratos
+        ?.map((item) => item?.contrato?.campamento?.nombre)
         .toString();
       const volquetesData = trabajadorAsis?.trabajador_contratos
         ?.map((item) => item?.contrato?.teletrans[0]?.volquete)
@@ -402,8 +412,8 @@ const aprobacionAsistencias = async (req, res, next) => {
           obj.volquetes = volquetesData || 0;
           obj.firma_jefe = aprobaciones[0]?.dataValues?.firma_jefe;
           obj.firma_gerente = aprobaciones[0]?.dataValues?.firma_gerente;
-          obj.jefe=aprobaciones[0]?.dataValues?.jefe;
-          obj.gerente=aprobaciones[0]?.dataValues?.gerente;
+          obj.jefe = aprobaciones[0]?.dataValues?.jefe;
+          obj.gerente = aprobaciones[0]?.dataValues?.gerente;
           obj.nro = index + 1;
           obj.nombres =
             trabajador?.apellido_paterno +
@@ -415,6 +425,7 @@ const aprobacionAsistencias = async (req, res, next) => {
           obj.telefono = trabajador.telefono;
           obj.cargo = cargoNombre;
           obj.area = areaNombre;
+          obj.campamento = campamentoNombre
         } else {
           // Si no se encuentra una aprobación correspondiente, establece valores predeterminados para las propiedades
           obj.huella = null;
@@ -423,8 +434,9 @@ const aprobacionAsistencias = async (req, res, next) => {
           obj.textoQuincea = null;
           obj.id = null;
           obj.nro = index + 1;
-          obj.jefe="";
-          obj.gerente=""
+          obj.jefe = "";
+          obj.gerente = "";
+          obj.campamento = ""
           obj.nombres =
             trabajador?.apellido_paterno +
             " " +
@@ -455,9 +467,10 @@ const aprobacionAsistencias = async (req, res, next) => {
               fecha !== "volquetes" &&
               fecha !== "teletrans" &&
               fecha !== "id" &&
-              fecha !== "observaciones"&&
+              fecha !== "observaciones" &&
               fecha !== "jefe" &&
-              fecha !== "gerente" 
+              fecha !== "gerente" &&
+              fecha !== "campamento"
             ) {
               obj[fecha] = "";
             }
@@ -493,9 +506,11 @@ const aprobacionAsistencias = async (req, res, next) => {
             fecha !== "volquetes" &&
             fecha !== "teletrans" &&
             fecha !== "id" &&
-            fecha !== "observaciones"&&
+            fecha !== "observaciones" &&
             fecha !== "jefe" &&
-            fecha !== "gerente" 
+            fecha !== "gerente" && 
+            fecha !== "campamento"
+
           ) {
             acc[fecha] =
               asistencias[fecha] === "Permiso"
@@ -523,7 +538,6 @@ const aprobacionAsistencias = async (req, res, next) => {
     res.status(500).json({ msg: "No se pudo obtener", status: 500 });
   }
 };
-
 
 //para añadir una observacion al tareo
 const updateObservacion = async (req, res, next) => {
@@ -553,11 +567,18 @@ const deleteAprobacionContrato = async (req, res) => {
   try {
     await aprobacion_contrato_pago.destroy({ where: { id: id } });
 
-    return res.status(200).json({ msg: "Aprobación eliminada con éxito!", status:200 });
+    return res
+      .status(200)
+      .json({ msg: "Aprobación eliminada con éxito!", status: 200 });
   } catch (error) {
     console.log(error);
-    return res.status(500).json({ msg: "No se pudo eliminar.", status:500 });
+    return res.status(500).json({ msg: "No se pudo eliminar.", status: 500 });
   }
 };
 
-module.exports = { getAprobacion, aprobacionAsistencias, updateObservacion, deleteAprobacionContrato };
+module.exports = {
+  getAprobacion,
+  aprobacionAsistencias,
+  updateObservacion,
+  deleteAprobacionContrato,
+};
