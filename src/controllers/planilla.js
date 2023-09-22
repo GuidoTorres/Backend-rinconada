@@ -364,7 +364,7 @@ const getPlanilla = async (req, res, next) => {
       };
     });
 
-    return res.status(200).json({ data: trabajadores });
+    return res.status(200).json({ data: finalConId });
   } catch (error) {
     console.log(error);
     res.status(500).json();
