@@ -141,9 +141,7 @@ const getContratoAsociacionById = async (req, res, next) => {
         id: item?.id,
         fecha_inicio_tabla: dayjs(item?.fecha_inicio)?.format("DD-MM-YYYY"),
         fecha_inicio: dayjs(item?.fecha_inicio)?.format("YYYY-MM-DD"),
-        fecha_fin: dayjs(data.contrato?.fecha_fin_estimada)?.format(
-          "YYYY-MM-DD"
-        ),
+        fecha_fin: fechaFormateada,
         codigo_contrato: item?.codigo_contrato,
         tipo_contrato: item?.tipo_contrato,
         periodo_trabajo: item?.periodo_trabajo,
