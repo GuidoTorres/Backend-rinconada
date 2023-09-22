@@ -95,7 +95,7 @@ const getPlanilla = async (req, res, next) => {
         },
       ],
     });
-
+    
     const getasoci = asociacion.findAll({
       include: [
         {
@@ -255,7 +255,7 @@ const getPlanilla = async (req, res, next) => {
         contratos: contratoFiltrado[0]?.contrato,
         suspendido: contratoFiltrado[0]?.contrato?.suspendido,
         gerencia: contratoFiltrado[0]?.contrato?.gerencia?.nombre,
-        area: contratoFiltrado[0]?.contrato?.area.nombre,
+        area: contratoFiltrado[0]?.contrato?.area?.nombre,
         puesto: contratoFiltrado[0]?.contrato?.cargo?.nombre,
         periodo_trabajo:
           contratoFiltrado[0]?.contrato?.periodo_trabajo.toString(),
