@@ -274,8 +274,8 @@ const postContratoAsociacion = async (req, res, next) => {
     finalizado: false,
     tareo: req?.body?.tareo,
   };
+  const transaction = await sequelize.transaction();
   try {
-    const transaction = await sequelize.transaction();
   
 
     if (req.body.trabajadores.length > 0) {
@@ -324,7 +324,7 @@ const postContratoAsociacion = async (req, res, next) => {
         .json({ msg: "No se puede crear el contrato no hay trabajadores en la asociación.", status: 401 });
     }
   } catch (error) {
-    if (transaction) await transaction.rollback(); // Revocar la transacción si se produjo un error
+    if (transaction) await transaction.rollback(); 
     res.status(500).json({ msg: "No se pudo crear el contrato.", status: 500 });
   }
 };
