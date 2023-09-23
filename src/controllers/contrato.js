@@ -276,31 +276,27 @@ const postContratoAsociacion = async (req, res, next) => {
   };
   const transaction = await sequelize.transaction();
   try {
-  
-
     if (req.body.trabajadores.length > 0) {
       // Crear contrato con transacción
       const post = await contrato.create(info, { transaction });
-
-      // Actualizar trabajador_contrato con transacción
-      for (let dni of req.body.trabajadores) {
-        await trabajador_contrato.update(
-          { contrato_id: post.id },
-          {
-            where: {
-              trabajador_dni: dni,
-              evaluacion_id: { [Op.ne]: null }, // se asegura que evaluacion_id no sea nulo
-              contrato_id: null, // se asegura que contrato_id sea nulo
-            },
-            transaction, // incluir la transacción aquí
-          }
-        );
-      }
+      const contraPago = req?.body?.trabajadores?.map((item) => {
+        return {
+          trabajador_dni: item,
+          contrato_id: post.id,
+        };
+      });
+      // Crear trabajador_contrato con transacción
+      const createContraPago = await trabajador_contrato.bulkCreate(
+        contraPago,
+        {
+          ignoreDuplicates: false,
+          transaction, // incluir la transacción aquí
+        }
+      );
       if (post) {
         let volquete = parseInt(req.body?.volquete) || 0;
         let teletran = parseInt(req.body?.teletran) || 0;
         let total = parseInt(volquete) * 4 + parseInt(teletran);
-
         const ttransInfo = {
           volquete: volquete,
           teletrans: teletran,
@@ -318,13 +314,13 @@ const postContratoAsociacion = async (req, res, next) => {
           .json({ msg: "Contrato creado con éxito!", status: 200 });
       }
     } else {
-      await transaction.rollback();
+      await transaction.rollback(); // Revocar la transacción
       return res
         .status(200)
-        .json({ msg: "No se puede crear el contrato no hay trabajadores en la asociación.", status: 401 });
+        .json({ msg: "Evaluación de trabajadores incompletas!", status: 401 });
     }
   } catch (error) {
-    if (transaction) await transaction.rollback(); 
+    await transaction.rollback(); // Revocar la transacción si se produjo un error
     res.status(500).json({ msg: "No se pudo crear el contrato.", status: 500 });
   }
 };
