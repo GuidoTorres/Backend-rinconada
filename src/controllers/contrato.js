@@ -276,26 +276,6 @@ const postContratoAsociacion = async (req, res, next) => {
   };
   try {
     const transaction = await sequelize.transaction();
-    const trabajadoresActivos = await trabajador_contrato.findAll({
-      where: {
-        trabajador_dni: { [Op.in]: req.body.trabajadores },
-      },
-      attributes: ['trabajador_dni', 'evaluacion_id', 'estado']  // Solo necesitamos el DNI y evaluacion_id
-    });
-    
-    // Filtrar aquellos que no tienen una evaluación válida (evaluacion_id nulo o no definido).
-    const trabajadoresSinEvaluacion = trabajadoresActivos.filter(t => t.evaluacion_id && t.estado === "Activo");
-
-    console.log(trabajadoresSinEvaluacion);
-  
-    // Si encontramos trabajadores sin evaluación, retornamos un error.
-    if (trabajadoresSinEvaluacion) {
-      
-      return res.status(400).json({
-        msg: `Todos los trabajadores deben tener una evaluación activa para registra el contrato.`,
-        status: 400,
-      });
-    }
   
 
     if (req.body.trabajadores.length > 0) {
@@ -341,7 +321,7 @@ const postContratoAsociacion = async (req, res, next) => {
       await transaction.rollback();
       return res
         .status(200)
-        .json({ msg: "Evaluación de trabajadores incompletas!", status: 401 });
+        .json({ msg: "No se puede crear el contrato no hay trabajadores en la asociación.", status: 401 });
     }
   } catch (error) {
     if (transaction) await transaction.rollback(); // Revocar la transacción si se produjo un error
