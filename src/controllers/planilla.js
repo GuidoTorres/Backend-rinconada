@@ -160,7 +160,12 @@ const getPlanilla = async (req, res, next) => {
           return codigoA - codigoB;
         })
         .slice(0, 1);
-      console.log(sortedTrabajadores[0].trabajador.dni);
+      console.log(sortedTrabajadores[0]?.trabajador_asistencia?.map(item=> {
+        return{
+          asistencia: item.asistencia,
+          fecha: item.asistencium.fecha
+        }
+      }));
       const asistencia = sortedTrabajadores[0]?.trabajador_asistencia?.filter(
         (data) => {
           return (
