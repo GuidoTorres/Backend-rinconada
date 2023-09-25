@@ -397,12 +397,8 @@ const trabajadorAsistencia = sequelize.define(
     asistencia_id: DataTypes.INTEGER,
     trabajador_id: DataTypes.STRING,
     asistencia: DataTypes.STRING,
-    observacion: DataTypes.STRING,
     hora_ingreso: DataTypes.STRING,
     tarde: DataTypes.STRING,
-    firma_gerente: DataTypes.STRING,
-    firma_jefe: DataTypes.STRING,
-    foto: DataTypes.STRING,
     revisada: DataTypes.BOOLEAN,
   },
   {
@@ -1164,36 +1160,36 @@ const suspensiones_jefes = sequelize.define(
   }
 );
 
-// const incidentes = sequelize.define(
-//   "incidentes",
+const incidentes = sequelize.define(
+  "incidentes",
 
-//   {
-//     id: {
-//       type: DataTypes.INTEGER,
-//       primaryKey: true,
-//       autoIncrement: true,
-//       allowNull: false,
-//     },
-//     fecha: DataTypes.STRING,
-//     hora: DataTypes.STRING,
-//     nivel: DataTypes.STRING,
-//     evento: DataTypes.STRING,
-//     tipo: DataTypes.STRING,
-//     ubicacion: DataTypes.STRING,
-//     labor: DataTypes.STRING,
-//     lugar: DataTypes.STRING,
-//     descripcion: DataTypes.TEXT,
-//     tajo: DataTypes.STRING,
-//     area_involucrada: DataTypes.STRING,
-//     medida_correctiva: DataTypes.STRING,
-//     foto: DataTypes.STRING,
-//     trabajador_contrato_id: DataTypes.INTEGER
-//   },
-//   {
-//     tableName: "incidentes",
-//     timestamp: true,
-//   }
-// );
+  {
+    id: {
+      type: DataTypes.INTEGER,
+      primaryKey: true,
+      autoIncrement: true,
+      allowNull: false,
+    },
+    fecha: DataTypes.STRING,
+    hora: DataTypes.STRING,
+    nivel: DataTypes.STRING,
+    evento: DataTypes.STRING,
+    tipo: DataTypes.STRING,
+    ubicacion: DataTypes.STRING,
+    labor: DataTypes.STRING,
+    lugar: DataTypes.STRING,
+    descripcion: DataTypes.TEXT,
+    tajo: DataTypes.STRING,
+    area_involucrada: DataTypes.STRING,
+    medida_correctiva: DataTypes.STRING,
+    foto: DataTypes.STRING,
+    trabajador_contrato_id: DataTypes.INTEGER
+  },
+  {
+    tableName: "incidentes",
+    timestamp: true,
+  }
+);
 
 gerencia.hasMany(area, {
   foreignKey: "gerencia_id",
@@ -1370,6 +1366,15 @@ trabajadorAsistencia.belongsTo(trabajador, {
   foreignKey: "trabajador_id",
   onDelete: "CASCADE",
 });
+trabajadorAsistencia.belongsTo(trabajador_contrato, {
+  foreignKey: 'trabajador_contrato_id',
+
+});
+trabajador_contrato.hasMany(trabajadorAsistencia, {
+  foreignKey: 'trabajador_contrato_id',
+
+});
+
 
 sucursal.hasMany(ingresos_egresos, {
   foreignKey: "sucursal_id",
@@ -1628,8 +1633,8 @@ suspensiones_jefes.belongsTo(trabajador, { foreignKey: "trabajador_id" });
 contrato.hasMany(suspensiones_jefes, { foreignKey: "contrato_id" });
 suspensiones_jefes.belongsTo(contrato, { foreignKey: "contrato_id" });
 
-// trabajador_contrato.hasMany(incidentes, {foreignKey: "trabajador_contrato_id"})
-// incidentes.belongsTo(trabajador_contrato,{ foreignKey: "trabajador_contrato_id"})
+trabajador_contrato.hasMany(incidentes, {foreignKey: "trabajador_contrato_id"})
+incidentes.belongsTo(trabajador_contrato,{ foreignKey: "trabajador_contrato_id"})
 
 module.exports = {
   sequelize,
@@ -1679,5 +1684,5 @@ module.exports = {
   contrato_pago_trabajador,
   suspensiones,
   suspensiones_jefes,
-  // incidentes
+  incidentes
 };

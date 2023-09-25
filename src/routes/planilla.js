@@ -10,7 +10,7 @@ router.get("/pagos/lista",checkAuth, planilla.getListaPago);
 router.get("/asociacion",checkAuth, planilla.getListaAsociacionProgramada);
 router.get("/campamento",checkAuth, planilla.campamentoPlanilla);
 router.get("/historial/:id",checkAuth, planilla.getPlanillaHistoriaTrabajador);
-router.get("/tareo/:id",checkAuth, planilla.getTareoTrabajador);
+router.get("/tareo/:id", planilla.getTareoTrabajador);
 router.get("/tareo/asociacion/:id", planilla.getTareoAsociacion);
 router.get("/teletrans",checkAuth, planilla.juntarTeletrans);
 router.put("/asociacion/:id",checkAuth,checkAuditoria, planilla.updatepagoAsociacion);
