@@ -34,7 +34,6 @@ const usuario = sequelize.define(
     estado: DataTypes.BOOLEAN,
     rol_id: DataTypes.INTEGER,
     cargo_id: DataTypes.INTEGER,
-    trabajador_dni: DataTypes.INTEGER,
     foto: DataTypes.STRING,
     caja: DataTypes.STRING,
   },
@@ -66,6 +65,7 @@ const trabajador = sequelize.define(
     deshabilitado: DataTypes.BOOLEAN,
     foto: DataTypes.STRING,
     eliminar: DataTypes.BOOLEAN,
+    usuario_id: DataTypes.INTEGER
   },
   {
     tableName: "trabajador",
@@ -964,6 +964,8 @@ const permisos = sequelize.define(
     logistica_aprobacion_gerente: DataTypes.BOOLEAN,
     logistica_aprobacion_superintendente: DataTypes.BOOLEAN,
     planillas_aprobacion: DataTypes.BOOLEAN,
+    seguridad: DataTypes.BOOLEAN,
+    seguridad_incidentes: DataTypes.BOOLEAN
   },
   {
     tableName: "permisos",
@@ -1183,7 +1185,8 @@ const incidentes = sequelize.define(
     area_involucrada: DataTypes.STRING,
     medida_correctiva: DataTypes.STRING,
     foto: DataTypes.STRING,
-    trabajador_contrato_id: DataTypes.INTEGER
+    trabajador_contrato_id: DataTypes.INTEGER,
+    altura: DataTypes.STRING
   },
   {
     tableName: "incidentes",

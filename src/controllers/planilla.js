@@ -160,12 +160,7 @@ const getPlanilla = async (req, res, next) => {
           return codigoA - codigoB;
         })
         .slice(0, 1);
-      console.log(sortedTrabajadores[0]?.trabajador_asistencia?.map(item=> {
-        return{
-          asistencia: item.asistencia,
-          fecha: item.asistencium.fecha
-        }
-      }));
+      
       const asistencia = sortedTrabajadores[0]?.trabajador_asistencia?.filter(
         (data) => {
           return (
@@ -173,8 +168,6 @@ const getPlanilla = async (req, res, next) => {
           );
         }
       ).length;
-
-      console.log(asistencia);
 
       return {
         nombre: item?.nombre,
@@ -214,6 +207,7 @@ const getPlanilla = async (req, res, next) => {
           (data.asistencia === "Asistio" || data.asistencia === "Comisión")
         );
       }).length;
+      console.log(item.evaluacion);
       return {
         dni: trabajador?.dni,
         nombre:
@@ -233,7 +227,7 @@ const getPlanilla = async (req, res, next) => {
         fecha_fin: fechaFin.format("DD-MM-YYYY"),
         campamento: contrato?.campamento?.nombre,
         asistencia: asistencia,
-        evaluacion: evaluacion?.evaluacion,
+        evaluacion: evaluacion,
         volquete: contrato?.teletrans[0]?.volquete || 0,
         teletran: contrato?.teletrans[0]?.teletrans || 0,
         total: contrato?.teletrans[0]?.total || 0,

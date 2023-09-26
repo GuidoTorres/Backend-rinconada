@@ -1,4 +1,4 @@
-const { usuario, permisos } = require("../../config/db");
+const { usuario, permisos, trabajador } = require("../../config/db");
 const { encrypt } = require("../helpers/handleBcrypt");
 const fs = require("fs");
 
@@ -17,7 +17,6 @@ const getUsuarioById = async (req, res, next) => {
   try {
     const user = await usuario.findAll({ where: { id: id } });
     return res.status(200).json({ data: user });
-
   } catch (error) {
     res.status(500).json(error);
   }
@@ -121,8 +120,6 @@ const getPermiso = async (req, res, next) => {
       attributes: { exclude: ["usuario_id"] },
     });
     return res.status(200).json({ data: user });
-
-    next();
   } catch (error) {
     res.status(500).json(error);
   }
@@ -171,6 +168,8 @@ const updatePermisos = async (req, res, next) => {
     logistica_aprobacion_gerente: req?.body?.logistica_aprobacion_gerente,
     logistica_aprobacion_superintendente:
       req?.body?.logistica_aprobacion_superintendente,
+    seguridad: req?.body?.seguridad,
+    seguridad_incidentes: req?.body?.seguridad_incidentes,
   };
   try {
     let user = await permisos.update(info, { where: { rol_id: id } });
@@ -194,10 +193,45 @@ const changePassword = async (req, res, next) => {
     return res
       .status(200)
       .json({ msg: "Contraseña actualizada con éxito!", status: 200 });
-    next();
   } catch (error) {
     console.log(error);
     res.status(500).json({ msg: "No se pudo actualizar", status: 500 });
+  }
+};
+
+const crearUsuariosDesdeTrabajadores = async (req, res) => {
+  try {
+    const trabajadoresSinUsuario = await trabajador.findAll({
+      attributes: { exclude: ["usuarioId"] },
+      where: { usuario_id: null }, // Asumiendo que 'usuarioId' es una FK en trabajador que apunta a usuario
+    });
+
+    const usuariosCreados = [];
+
+    for (let trabajador of trabajadoresSinUsuario) {
+      // Encriptar la contraseña
+      const passwordHash = await encrypt(trabajador.dni);
+      const nuevoUsuario = await usuario.create({
+        nombre: trabajador.nombre,
+        usuario: trabajador.dni,
+        contrasenia: passwordHash,
+        estado: true,
+        rol_id: 63, // Ajusta esto si tienes un rol específico
+      });
+
+      trabajador.usuario_id = nuevoUsuario.id;
+      await trabajador.save();
+
+      usuariosCreados.push(nuevoUsuario);
+    }
+
+    res.status(201).json({
+      message: "Usuarios creados exitosamente",
+      usuarios: usuariosCreados,
+    });
+  } catch (error) {
+    console.error("Hubo un error al crear usuarios:", error);
+    res.status(500).json({ message: "Error interno del servidor" });
   }
 };
 
@@ -210,4 +244,5 @@ module.exports = {
   updatePermisos,
   getPermiso,
   changePassword,
+  crearUsuariosDesdeTrabajadores,
 };

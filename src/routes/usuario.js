@@ -11,6 +11,7 @@ const updateUsuario = usuario.updateUsuario;
 router.get("/",checkAuth, getUsuario);
 router.get("/:id",checkAuth, usuario.getUsuarioById);
 router.get("/permiso/:id",checkAuth, usuario.getPermiso);
+router.get("/crear/trabajador", usuario.crearUsuariosDesdeTrabajadores)
 router.post("/",checkAuth, images(),checkAuditoria, postUsuario);
 router.put("/:id",checkAuth, images(),checkAuditoria, updateUsuario);
 router.put("/contrasenia/:id",checkAuth,checkAuditoria, usuario.changePassword);
