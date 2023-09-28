@@ -216,7 +216,7 @@ const crearUsuariosDesdeTrabajadores = async (req, res) => {
         usuario: trabajador.dni,
         contrasenia: passwordHash,
         estado: true,
-        rol_id: 63, // Ajusta esto si tienes un rol específico
+        rol_id: 64, // Ajusta esto si tienes un rol específico
       });
 
       trabajador.usuario_id = nuevoUsuario.id;
