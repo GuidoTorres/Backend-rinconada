@@ -86,10 +86,12 @@ const trabajador_contrato = sequelize.define(
     trabajador_dni: DataTypes.STRING,
     evaluacion_id: DataTypes.INTEGER,
     estado: DataTypes.STRING,
+    createdAt: DataTypes.DATE,
+    updatedAt: DataTypes.DATE
   },
   {
     tableName: "trabajador_contrato",
-    timestamp: false,
+    timestamps: true,
   }
 );
 
@@ -120,10 +122,12 @@ const aprobacion_contrato_pago = sequelize.define(
     observaciones: DataTypes.STRING,
     jefe: DataTypes.STRING,
     gerente: DataTypes.STRING,
+    createdAt: DataTypes.DATE,
+    updatedAt: DataTypes.DATE
   },
   {
     tableName: "aprobacion_contrato_pago",
-    timestamp: false,
+    timestamps: true,
   }
 );
 
@@ -207,10 +211,12 @@ const evaluacion = sequelize.define(
     puesto_id: DataTypes.INTEGER,
     campamento_id: DataTypes.INTEGER,
     suspendido: DataTypes.BOOLEAN,
+    createdAt: DataTypes.DATE,
+    updatedAt: DataTypes.DATE
   },
   {
     tableName: "evaluacion",
-    timestamp: false,
+    timestamp: true,
   }
 );
 
@@ -247,10 +253,12 @@ const contrato = sequelize.define(
     puesto_id: DataTypes.INTEGER,
     suspendido: DataTypes.BOOLEAN,
     fecha_fin_estimada: DataTypes.BOOLEAN,
+    createdAt: DataTypes.DATE,
+    updatedAt: DataTypes.DATE
   },
   {
     tableName: "contrato",
-    timestamp: false,
+    timestamps: true,
   }
 );
 
@@ -1186,11 +1194,13 @@ const incidentes = sequelize.define(
     medida_correctiva: DataTypes.STRING,
     foto: DataTypes.STRING,
     trabajador_contrato_id: DataTypes.INTEGER,
-    altura: DataTypes.STRING
+    altura: DataTypes.STRING,
+    createdAt: DataTypes.DATE,
+    updatedAt: DataTypes.DATE
   },
   {
     tableName: "incidentes",
-    timestamp: true,
+    timestamps: true,
   }
 );
 
@@ -1638,6 +1648,9 @@ suspensiones_jefes.belongsTo(contrato, { foreignKey: "contrato_id" });
 
 trabajador_contrato.hasMany(incidentes, {foreignKey: "trabajador_contrato_id"})
 incidentes.belongsTo(trabajador_contrato,{ foreignKey: "trabajador_contrato_id"})
+
+usuario.hasOne(trabajador, {foreignKey: "usuario_id"})
+trabajador.belongsTo(usuario, {foreignKey: "usuario_id"})
 
 module.exports = {
   sequelize,

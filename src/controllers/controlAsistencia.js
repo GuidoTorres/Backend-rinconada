@@ -564,7 +564,6 @@ const asociacionData = async () => {
       },
       attributes: { exclude: ["contrato_id"] },
       include: [
-        {model:trabajador_contrato},
         {
           model: asociacion,
           include: [

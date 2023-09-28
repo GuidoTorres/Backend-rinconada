@@ -10,10 +10,10 @@ const {
   cargo,
   suspensiones,
   suspensiones_jefes,
+  trabajadorAsistencia,
 } = require("../../config/db");
 const { Op } = require("sequelize");
 const dayjs = require("dayjs");
-const utc = require("dayjs/plugin/utc");
 
 // obtener lista de contratos
 const getContrato = async (req, res, next) => {
@@ -611,6 +611,7 @@ const registrarSuspension = async (req, res) => {
       include: [
         { model: contrato, attributes: { exclude: ["contrato_id"] } },
         evaluacion,
+        {model: trabajadorAsistencia}
       ],
     });
 
@@ -682,6 +683,15 @@ const registrarSuspension = async (req, res) => {
 
       await trabajador.update({ asociacion_id: null }, { where: { dni: dni } });
     }
+
+    const asistencia = traba_contrato.trabajadorAsistencia[0].length
+
+    const crearTareo = await aprobacion_contrato_pago.create({
+      contrato_id: contrato_id,
+
+
+    })
+
     await t.commit();
 
     res

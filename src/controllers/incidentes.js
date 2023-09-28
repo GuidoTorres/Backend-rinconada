@@ -57,7 +57,8 @@ const getIncidentes = async (req, res, next) => {
           item?.trabajador_contrato?.trabajador?.apellido_materno +
           " " +
           item?.trabajador_contrato?.trabajador?.nombre,
-        area: item?.trabajador_contrato?.contrato?.area?.nombre
+        area: item?.trabajador_contrato?.contrato?.area?.nombre,
+        altura: item?.altura
       };
     });
 
@@ -101,26 +102,25 @@ const postIncidentes = async (req, res, next) => {
 
 const updateIncidentes = async (req, res, next) => {
   let id = req.params.id;
-
   try {
-    let update = await incidentes.update(req.body, { where: { id: id } });
+    await incidentes.update(req.body, { where: { id: id } });
     return res
       .status(200)
-      .json({ msg: "Almacén actualizado con éxito!", status: 200 });
+      .json({ msg: "Incidente actualizado con éxito!", status: 200 });
   } catch (error) {
     res
       .status(500)
-      .json({ msg: "No se pudo actualizar el almacén.", status: 500 });
+      .json({ msg: "No se pudo actualizar el incidente.", status: 500 });
   }
 };
 
 const deleteIncidente = async (req, res, next) => {
   let id = req.params.id;
   try {
-    let camp = await almacen.destroy({ where: { id: id } });
+    await incidentes.destroy({ where: { id: id } });
     return res
       .status(200)
-      .json({ msg: "Almacén eliminado con éxito!", status: 200 });
+      .json({ msg: "Incidente eliminado con éxito!", status: 200 });
   } catch (error) {
     res.status(500).json({ msg: "No se pudo eliminar.", status: 500 });
   }

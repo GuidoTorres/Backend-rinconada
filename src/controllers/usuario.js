@@ -30,11 +30,11 @@ const postUsuario = async (req, res, next) => {
     nombre: req.body.nombre,
     usuario: req.body.usuario,
     contrasenia: passwordHash,
-    estado: req.body.estado,
-    rol_id: req.body.rol_id,
-    cargo_id: req.body.cargo_id,
+    estado: req.body.estado || true,
+    rol_id: req.body.rol_id || null,
+    cargo_id: req.body.cargo_id || null,
     foto: req.file ? process.env.LOCAL_IMAGE + req?.file?.filename : "",
-    caja: req.body.caja,
+    caja: req.body.caja || null,
   };
 
   try {
