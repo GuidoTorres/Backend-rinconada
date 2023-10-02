@@ -56,7 +56,6 @@ const getPlanilla = async (req, res, next) => {
           model: trabajador,
           where: {
             asociacion_id: { [Op.is]: null },
-            deshabilitado: { [Op.not]: true },
           },
           attributes: [
             "nombre",
@@ -160,14 +159,26 @@ const getPlanilla = async (req, res, next) => {
           return codigoA - codigoB;
         })
         .slice(0, 1);
-      
+
       const asistencia = sortedTrabajadores[0]?.trabajador_asistencia?.filter(
         (data) => {
+          const fechaAsistencia = dayjs(data?.asistencium?.fecha);
           return (
-            data.asistencia === "Asistio" || data.asistencia === "Comisión"
+            ((fechaAsistencia.isSame(fechaInicioContrato) ||
+              fechaAsistencia.isAfter(fechaInicioContrato)) &&
+              (fechaAsistencia.isSame(fechaFinContrato) ||
+                fechaAsistencia.isBefore(fechaFinContrato)) &&
+              data.asistencia === "Asistio") ||
+            data.asistencia === "Comisión" ||
+            data.asistencia === "Permiso remunerado" ||
+            data.asistencia === "Vacaciones" ||
+            data.asistencia === "Descanso medico" ||
+            data.asistencia === "Dia Libre"
           );
         }
       ).length;
+
+      console.log(asistencia);
 
       return {
         nombre: item?.nombre,
@@ -177,7 +188,6 @@ const getPlanilla = async (req, res, next) => {
         fecha_fin: fechaFinContrato.format("DD-MM-YYYY"),
         contratos: contrato,
         volquete: contrato?.teletrans[0]?.volquete,
-        puesto: "",
         campamento: contrato?.campamento?.nombre.toString(),
         teletran: contrato?.teletrans[0]?.teletrans,
         total: contrato?.teletrans[0]?.total,
@@ -198,16 +208,20 @@ const getPlanilla = async (req, res, next) => {
       const fechaInicio = dayjs(contrato?.fecha_inicio);
       const fechaFin = dayjs(contrato?.fecha_fin_estimada);
       const asistencia = item?.trabajador_asistencia?.filter((data) => {
-        const fechaAsistencia = dayjs(data.asistencium.fecha).startOf("day");
+        const fechaAsistencia = dayjs(data?.asistencium?.fecha);
         return (
-          (fechaAsistencia.isSame(fechaInicio) ||
+          ((fechaAsistencia.isSame(fechaInicio) ||
             fechaAsistencia.isAfter(fechaInicio)) &&
-          (fechaAsistencia.isSame(fechaFin) ||
-            fechaAsistencia.isBefore(fechaFin)) &&
-          (data.asistencia === "Asistio" || data.asistencia === "Comisión")
+            (fechaAsistencia.isSame(fechaFin) ||
+              fechaAsistencia.isBefore(fechaFin)) &&
+            data.asistencia === "Asistio") ||
+          data.asistencia === "Comisión" ||
+          data.asistencia === "Permiso remunerado" ||
+          data.asistencia === "Vacaciones" ||
+          data.asistencia === "Descanso medico" ||
+          data.asistencia === "Dia Libre"
         );
       }).length;
-      console.log(item.evaluacion);
       return {
         dni: trabajador?.dni,
         nombre:
@@ -719,106 +733,24 @@ const getTareoTrabajador = async (req, res, next) => {
       ],
     });
 
-    const filterContrato = trabajadores?.filter(
-      (trabajador) => trabajador?.trabajador_contratos?.length > 0
-    );
     const aprobacionFilter = [];
     let subarrayId = 1;
 
-    const createSubarray = (
-      trabajador,
-      subAsistencias,
-      fechaInicio,
-      fechaFin,
-      contador
-    ) => {
-      const fechaInicioDayjs = dayjs(fechaInicio);
-      const fechaFinDayjs = dayjs(fechaFin);
-      let asistenciasValidas = 0;
+    trabajadores?.map((trabajador) => {
+      const tareo = trabajador?.trabajador_contratos[0]?.contrato.tareo;
+      const trabajadorContrato = trabajador?.trabajador_contratos[0];
 
-      const asistenciasEnRango =
-        trabajador?.trabajador_contratos[0]?.trabajador_asistencia?.filter(
-          (asistencia) => {
-            const fechaAsistencia = dayjs(asistencia.asistencium.fecha);
-
-            return (
-              (fechaAsistencia.isSame(fechaInicioDayjs) ||
-                fechaAsistencia.isAfter(fechaInicioDayjs)) &&
-              (fechaAsistencia.isSame(fechaFinDayjs) ||
-                fechaAsistencia.isBefore(fechaFinDayjs))
-            );
-          }
-        );
-
-      asistenciasEnRango.forEach((asistencia) => {
-        if (["Asistio", "Comisión", "Dia Libre"].includes(asistencia.asistencia)) {
-          asistenciasValidas++;
-        }
-      });
-
-      subAsistencias.sort((a, b) => {
-        return a.asistencium.fecha.localeCompare(b.asistencium.fecha);
-      });
-
-      const contrato = trabajador.trabajador_contratos[0].contrato;
-      const teletrans = { ...contrato?.teletrans?.slice(-1)[0] };
-
-      const asistenciaCompleta = subAsistencias.map((item, a) => {
-        return {
-          id: a + 1,
-          asistencia: item?.asistencia,
-          fecha: item?.asistencium?.fecha,
-          hora_ingreso: item?.asistencium?.hora_ingreso,
-          tarde: item?.tarde,
-          observacion: item?.observacion,
-        };
-      });
-
-      const aprobacionFiltered =
-        contrato.aprobacion_contrato_pagos?.find(
-          (item) => item.subarray_id == subarrayId
-        ) || {};
-
-      aprobacionFilter.push({
-        subarray_id: subarrayId,
-        nombre: `${trabajador?.apellido_paterno} ${trabajador?.apellido_materno} ${trabajador?.nombre}`,
-        celular: trabajador?.telefono,
-        dni: trabajador?.dni,
-        fecha_inicio: dayjs(fechaInicio)?.format("DD-MM-YYYY"),
-        fecha_fin: dayjs(fechaFin)?.format("DD-MM-YYYY"),
-        volquete: teletrans.volquete,
-        teletran: teletrans.teletrans,
-        total: teletrans.total,
-        trabajador_asistencia: subAsistencias,
-        cargo: contrato.puesto,
-        asistencia: asistenciasValidas,
-        asistencia_completa: asistenciaCompleta,
-        estado: aprobacionFiltered.estado,
-        aprobacion_id: aprobacionFiltered.id,
-        firma_jefe: aprobacionFiltered.firma_jefe,
-        firma_gerente: aprobacionFiltered.firma_gerente,
-        foto: aprobacionFiltered.huella,
-      });
-
-      subarrayId++;
-    };
-
-    if (!filterContrato) {
-      return;
-    }
-    filterContrato.map((trabajador) => {
-      const tareo = trabajador.trabajador_contratos[0].contrato.tareo;
-      if (tareo === "Lunes a sabado") {
+      if (tareo === "Lunes a sabado" || tareo === "Lunes a domingo") {
+        const minAsistencias = 15;
         let contador = 0;
         let subAsistencias = [];
         let fechaInicio = null;
         let fechaFin = null;
-
-        const minAsistencias = 15;
-        const sortedAsistencias =
-          trabajador?.trabajador_contratos[0]?.trabajador_asistencia?.sort(
-            (a, b) => a.asistencium.fecha.localeCompare(b.asistencium.fecha)
-          );
+        const sortedAsistencias = ordenarAsistencia(
+          trabajadorContrato?.contrato?.fecha_inicio,
+          trabajadorContrato?.contrato?.fecha_fin_estimada,
+          trabajadorContrato?.trabajador_asistencia
+        );
 
         const numAsistencias = sortedAsistencias.length;
 
@@ -829,7 +761,14 @@ const getTareoTrabajador = async (req, res, next) => {
             subAsistencias.push(asistencia);
 
             if (
-              ["Asistio", "Comisión"].includes(asistencia.asistencia) &&
+              [
+                "Asistio",
+                "Comisión",
+                "Dia Libre",
+                "Permiso remunerado",
+                "Vacaciones",
+                "Descanso medico",
+              ].includes(asistencia.asistencia) &&
               contador < minAsistencias
             ) {
               contador++;
@@ -838,8 +777,6 @@ const getTareoTrabajador = async (req, res, next) => {
             if (contador === 1 && !fechaInicio) {
               fechaInicio = asistencia.asistencium.fecha;
             }
-
-            // Creamos subarray cuando se alcance el número exacto de asistencias.
             if (contador === minAsistencias || i === numAsistencias - 1) {
               fechaFin = asistencia.asistencium.fecha;
 
@@ -848,71 +785,140 @@ const getTareoTrabajador = async (req, res, next) => {
                 subAsistencias,
                 fechaInicio,
                 fechaFin,
-                contador
+                contador,
+                subarrayId,
+                aprobacionFilter
               );
 
-              // Preparación para el siguiente subarray
-              contador = 0; // Reiniciamos el contador
-              subAsistencias = []; // Limpiamos el arreglo de asistencias
-              fechaInicio = null; // Reiniciamos la fecha de inicio
+              contador = 0;
+              subAsistencias = [];
+              fechaInicio = null;
             }
           }
         }
       } else if (tareo === "Mes cerrado") {
-        const sortedAsistencias =
-          trabajador?.trabajador_contratos[0]?.trabajador_asistencia?.sort(
-            (a, b) => a.asistencium.fecha.localeCompare(b.asistencium.fecha)
-          );
+        const fechaInicioDay = trabajadorContrato?.contrato?.fecha_inicio;
+        const asistencias = trabajadorContrato?.trabajador_asistencia || [];
+        const sortedAsistencias = [...asistencias].sort((a, b) =>
+          a.asistencium.fecha.localeCompare(b.asistencium.fecha)
+        );
 
+        const getAsistenciaForDay = (fecha) => {
+          const asistencia = sortedAsistencias.find((data) =>
+            dayjs(data?.asistencium?.fecha).isSame(fecha)
+          );
+          return (
+            asistencia || {
+              asistencium: { fecha, asistencia: "Sin asistencia" },
+            }
+          );
+        };
+
+        const fechaInicio = dayjs(fechaInicioDay);
+        const fechaDeUltimaAsistencia = dayjs(
+          sortedAsistencias[sortedAsistencias.length - 1]?.asistencium?.fecha
+        );
+
+        let subAsistencias = [];
+        let currentDate = fechaInicio;
+
+        while (!currentDate.isAfter(fechaDeUltimaAsistencia)) {
+          const currentAsistencia = getAsistenciaForDay(
+            currentDate.format("YYYY-MM-DD")
+          );
+          subAsistencias.push(currentAsistencia);
+
+          const daysInMonth = currentDate.daysInMonth();
+          let splitDay;
+
+          if (daysInMonth === 31) {
+            splitDay = 16;
+          } else if (daysInMonth === 30 || daysInMonth === 29) {
+            splitDay = 15;
+          } else {
+            splitDay = 15;
+          }
+
+          // Si es el último día del mes, el día de la última asistencia, o se ha alcanzado el splitDay
+          if (
+            currentDate.date() === currentDate.daysInMonth() ||
+            currentDate.isSame(fechaDeUltimaAsistencia) ||
+            subAsistencias.length === splitDay
+          ) {
+            createSubarray(
+              trabajador,
+              subAsistencias,
+              subAsistencias[0].asistencium.fecha,
+              currentAsistencia.asistencium.fecha,
+              subAsistencias.length,
+              subarrayId,
+              aprobacionFilter
+            );
+            subAsistencias = [];
+
+            // Ajusta splitDay para la segunda mitad del mes si es necesario
+            if (currentDate.date() === splitDay) {
+              splitDay = daysInMonth - splitDay;
+            }
+          }
+
+          currentDate = currentDate.add(1, "day");
+        }
+      } else if (tareo === "20 dias") {
+        const minAsistencias = 20;
+        let contador = 0;
         let subAsistencias = [];
         let fechaInicio = null;
         let fechaFin = null;
+        const sortedAsistencias = ordenarAsistencia(
+          trabajadorContrato?.contrato?.fecha_inicio,
+          trabajadorContrato?.contrato?.fecha_fin_estimada,
+          trabajadorContrato?.trabajador_asistencia
+        );
 
-        let splitDay;
-        let currentMonth;
+        const numAsistencias = sortedAsistencias.length;
 
-        // Contador de subarreglos
-        let subarrayCount = 0;
+        if (numAsistencias >= 1) {
+          for (let i = 0; i < numAsistencias; i++) {
+            const asistencia = sortedAsistencias[i];
 
-        sortedAsistencias.forEach((asistencia, i) => {
-          const fechaAsistencia = dayjs(asistencia.asistencium.fecha);
-      
-          if (!fechaInicio) {
+            subAsistencias.push(asistencia);
+
+            if (
+              [
+                "Asistio",
+                "Comisión",
+                "Dia Libre",
+                "Permiso remunerado",
+                "Vacaciones",
+                "Descanso medico",
+              ].includes(asistencia.asistencia) &&
+              contador < minAsistencias
+            ) {
+              contador++;
+            }
+
+            if (contador === 1 && !fechaInicio) {
               fechaInicio = asistencia.asistencium.fecha;
-              const daysInMonth = fechaAsistencia.daysInMonth();
-              if (daysInMonth === 31) {
-                  splitDay = 16;
-              } else if (daysInMonth === 30 || daysInMonth === 29) {
-                  splitDay = 15;
-              } else {
-                  splitDay = 14;
-              }
-          }
-      
-          subAsistencias.push(asistencia);
-            
-          if (i === sortedAsistencias.length - 1 || subAsistencias.length === splitDay) {
+            }
+            if (contador === minAsistencias || i === numAsistencias - 1) {
               fechaFin = asistencia.asistencium.fecha;
-              createSubarray(trabajador, subAsistencias, fechaInicio, fechaFin, subAsistencias.length);
-      
-              // Reiniciamos el subarray y la fecha de inicio
-              fechaInicio = fechaAsistencia.add(1, "day").format("YYYY-MM-DD");
-              subAsistencias = [];
-              
-              // Determinamos el splitDay para el próximo subarray
-              splitDay = fechaAsistencia.daysInMonth() - splitDay;
-          }
-      });
 
-        if (subAsistencias.length > 0) {
-          // Asegurándonos de agregar el último subarray si hay asistencias pendientes
-          createSubarray(
-            trabajador,
-            subAsistencias,
-            fechaInicio,
-            fechaFin,
-            subAsistencias.length
-          );
+              createSubarray(
+                trabajador,
+                subAsistencias,
+                fechaInicio,
+                fechaFin,
+                contador,
+                subarrayId,
+                aprobacionFilter
+              );
+
+              contador = 0;
+              subAsistencias = [];
+              fechaInicio = null;
+            }
+          }
         }
       }
     });
@@ -922,6 +928,106 @@ const getTareoTrabajador = async (req, res, next) => {
     console.log(error);
     res.status(500).json;
   }
+};
+
+const ordenarAsistencia = (inicio, fin, asistencia) => {
+  return asistencia
+    ?.filter((data) => {
+      const fechaAsistencia = dayjs(data?.asistencium?.fecha);
+      return (
+        (fechaAsistencia.isSame(inicio) || fechaAsistencia.isAfter(inicio)) &&
+        (fechaAsistencia.isSame(fin) || fechaAsistencia.isBefore(fin))
+      );
+    })
+    .sort((a, b) => a.asistencium.fecha.localeCompare(b.asistencium.fecha));
+};
+
+const createSubarray = (
+  trabajador,
+  subAsistencias,
+  fechaInicio,
+  fechaFin,
+  contador,
+  subarrayId,
+  aprobacionFilter
+) => {
+  const fechaInicioDayjs = dayjs(fechaInicio);
+  const fechaFinDayjs = dayjs(fechaFin);
+  let asistenciasValidas = 0;
+
+  const asistenciasEnRango =
+    trabajador?.trabajador_contratos[0]?.trabajador_asistencia?.filter(
+      (asistencia) => {
+        const fechaAsistencia = dayjs(asistencia.asistencium.fecha);
+
+        return (
+          (fechaAsistencia.isSame(fechaInicioDayjs) ||
+            fechaAsistencia.isAfter(fechaInicioDayjs)) &&
+          (fechaAsistencia.isSame(fechaFinDayjs) ||
+            fechaAsistencia.isBefore(fechaFinDayjs))
+        );
+      }
+    );
+
+  asistenciasEnRango.forEach((asistencia) => {
+    if (
+      [
+        "Asistio",
+        "Comisión",
+        "Dia Libre",
+        "Permiso remunerado",
+        "Vacaciones",
+        "Descanso medico",
+      ].includes(asistencia.asistencia)
+    ) {
+      asistenciasValidas++;
+    }
+  });
+
+  subAsistencias.sort((a, b) => {
+    return a.asistencium.fecha.localeCompare(b.asistencium.fecha);
+  });
+
+  const contrato = trabajador.trabajador_contratos[0].contrato;
+  const teletrans = { ...contrato?.teletrans?.slice(-1)[0] };
+
+  const asistenciaCompleta = subAsistencias.map((item, a) => {
+    return {
+      id: a + 1,
+      asistencia: item?.asistencia || "Sin asistencia",
+      fecha: item?.asistencium?.fecha,
+      hora_ingreso: item?.asistencium?.hora_ingreso,
+      tarde: item?.tarde,
+      observacion: item?.observacion,
+    };
+  });
+  const aprobacionFiltered =
+    contrato.aprobacion_contrato_pagos?.find(
+      (item) => item.subarray_id == subarrayId
+    ) || {};
+
+  aprobacionFilter.push({
+    subarray_id: subarrayId,
+    nombre: `${trabajador?.apellido_paterno} ${trabajador?.apellido_materno} ${trabajador?.nombre}`,
+    celular: trabajador?.telefono,
+    dni: trabajador?.dni,
+    fecha_inicio: dayjs(fechaInicio)?.format("DD-MM-YYYY"),
+    fecha_fin: dayjs(fechaFin)?.format("DD-MM-YYYY"),
+    volquete: teletrans.volquete,
+    teletran: teletrans.teletrans,
+    total: teletrans.total,
+    trabajador_asistencia: subAsistencias,
+    cargo: contrato.puesto,
+    asistencia: asistenciasValidas,
+    asistencia_completa: asistenciaCompleta,
+    estado: aprobacionFiltered.estado,
+    aprobacion_id: aprobacionFiltered.id,
+    firma_jefe: aprobacionFiltered.firma_jefe,
+    firma_gerente: aprobacionFiltered.firma_gerente,
+    foto: aprobacionFiltered.huella,
+  });
+
+  subarrayId++;
 };
 
 // para obtener el tareo de las asocicaiones
@@ -965,13 +1071,10 @@ const getTareoAsociacion = async (req, res, next) => {
           "YYYY-MM-DD",
           "YYYY-MM-DD HH:mm:ss",
         ]).toDate();
-        let fechaFin = dayjs(contrato.fecha_fin, [
+        let fechaFin = dayjs(contrato.fecha_fin_estimada, [
           "YYYY-MM-DD",
           "YYYY-MM-DD HH:mm:ss",
         ]).toDate();
-        let fechaInicioData = dayjs(contrato.fecha_inicio);
-        let fechaFinData =
-          dayjs(contrato.fecha_fin_estimada) || dayjs(contrato.fecha_fin);
 
         if (fechaInicio.getTime() > fechaFin.getTime()) {
           return [];
@@ -1002,18 +1105,28 @@ const getTareoAsociacion = async (req, res, next) => {
             }
           );
           asistenciasPrimerTrabajador =
-            trabajadorMenorCodigo?.trabajador_asistencia?.sort((a, b) => {
-              const dateA = dayjs(a.asistencium.fecha, [
-                "YYYY-MM-DD",
-                "YYYY-MM-DD HH:mm:ss",
-              ]).toDate();
-              const dateB = dayjs(b.asistencium.fecha, [
-                "YYYY-MM-DD",
-                "YYYY-MM-DD HH:mm:ss",
-              ]).toDate();
+            trabajadorMenorCodigo?.trabajador_asistencia
+              ?.filter((data) => {
+                const fechaAsistencia = dayjs(data?.asistencium?.fecha);
+                return (
+                  (fechaAsistencia.isSame(fechaInicio) ||
+                    fechaAsistencia.isAfter(fechaInicio)) &&
+                  (fechaAsistencia.isSame(fechaFin) ||
+                    fechaAsistencia.isBefore(fechaFin))
+                );
+              })
+              .sort((a, b) => {
+                const dateA = dayjs(a.asistencium.fecha, [
+                  "YYYY-MM-DD",
+                  "YYYY-MM-DD HH:mm:ss",
+                ]).toDate();
+                const dateB = dayjs(b.asistencium.fecha, [
+                  "YYYY-MM-DD",
+                  "YYYY-MM-DD HH:mm:ss",
+                ]).toDate();
 
-              return dateA - dateB;
-            });
+                return dateA - dateB;
+              });
         } else {
           trabajadorMenorCodigo = null;
           asistenciasPrimerTrabajador = [];
@@ -1027,8 +1140,12 @@ const getTareoAsociacion = async (req, res, next) => {
         while (currentIndex < asistenciasPrimerTrabajador.length) {
           let asistencia = asistenciasPrimerTrabajador[currentIndex];
           if (
-            asistencia?.asistencia === "Asistio" ||
-            asistencia?.asistencia === "Comisión"
+            asistencia.asistencia === "Asistio" ||
+            asistencia.asistencia === "Comisión" ||
+            asistencia.asistencia === "Permiso remunerado" ||
+            asistencia.asistencia === "Vacaciones" ||
+            asistencia.asistencia === "Descanso medico" ||
+            asistencia.asistencia === "Dia Libre"
           ) {
             contador++;
             subAsistencias.push(asistencia);

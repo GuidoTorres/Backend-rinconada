@@ -82,7 +82,7 @@ const aprobacionAsistencias = async (req, res, next) => {
                 model: aprobacion_contrato_pago,
                 where: { subarray_id: quincena },
               },
-              { model: campamento },
+              { model: campamento, attributes: { exclude: ["campamento_id"] } },
               { model: area },
               { model: teletrans },
             ],
@@ -146,7 +146,7 @@ const aprobacionAsistencias = async (req, res, next) => {
       });
 
       const contratoAsociacion = dataContratos?.area?.nombre;
-      const campamento = dataContratos?.campamento?.nombre
+      const campamentos = dataContratos?.campamento?.nombre;
       const pago = dataContratos?.teletrans[0];
 
       const asistenciasObj = trabajadorContratos.map((trabajador, index) => {
@@ -165,7 +165,7 @@ const aprobacionAsistencias = async (req, res, next) => {
           obj.firma_gerente = aprobaciones.firma_gerente;
           obj.jefe = aprobaciones.jefe;
           obj.gerente = aprobaciones.gerente;
-          obj.campamento = campamento
+          obj.campamento = campamentos;
           obj.nro = index + 1;
           obj.textoQuincena = obtenerRangoQuincena(
             parseInt(aprobaciones.subarray_id),
@@ -195,7 +195,7 @@ const aprobacionAsistencias = async (req, res, next) => {
           obj.nro = index + 1;
           obj.observaciones = "";
           obj.textoQuincea = "";
-          obj.campamento = ""
+          obj.campamento = "";
           obj.dni = trabajador?.dataValues.dni;
           obj.telefono = trabajador?.dataValues.telefono;
           obj.asociacion = asociacionAsistencia.nombre;
@@ -282,7 +282,7 @@ const aprobacionAsistencias = async (req, res, next) => {
             fecha !== "textoQuincena" &&
             fecha !== "observaciones" &&
             fecha !== "jefe" &&
-            fecha !== "gerente"&&
+            fecha !== "gerente" &&
             fecha !== "campamento"
           ) {
             acc[fecha] =
@@ -326,7 +326,10 @@ const aprobacionAsistencias = async (req, res, next) => {
                   },
                   { model: area },
                   { model: cargo, attributes: { exclude: ["cargo_id"] } },
-                  {model: campamento, attributes: { exclude: ["campamento_id"] }},
+                  {
+                    model: campamento,
+                    attributes: { exclude: ["campamento_id"] },
+                  },
                   { model: teletrans },
                 ],
               },
@@ -367,7 +370,7 @@ const aprobacionAsistencias = async (req, res, next) => {
       const areaNombre = trabajadorAsis?.trabajador_contratos
         ?.map((item) => item?.contrato?.area?.nombre)
         .toString();
-        const campamentoNombre = trabajadorAsis?.trabajador_contratos
+      const campamentoNombre = trabajadorAsis?.trabajador_contratos
         ?.map((item) => item?.contrato?.campamento?.nombre)
         .toString();
       const volquetesData = trabajadorAsis?.trabajador_contratos
@@ -425,7 +428,7 @@ const aprobacionAsistencias = async (req, res, next) => {
           obj.telefono = trabajador.telefono;
           obj.cargo = cargoNombre;
           obj.area = areaNombre;
-          obj.campamento = campamentoNombre
+          obj.campamento = campamentoNombre;
         } else {
           // Si no se encuentra una aprobación correspondiente, establece valores predeterminados para las propiedades
           obj.huella = null;
@@ -436,7 +439,7 @@ const aprobacionAsistencias = async (req, res, next) => {
           obj.nro = index + 1;
           obj.jefe = "";
           obj.gerente = "";
-          obj.campamento = ""
+          obj.campamento = "";
           obj.nombres =
             trabajador?.apellido_paterno +
             " " +
@@ -508,9 +511,8 @@ const aprobacionAsistencias = async (req, res, next) => {
             fecha !== "id" &&
             fecha !== "observaciones" &&
             fecha !== "jefe" &&
-            fecha !== "gerente" && 
+            fecha !== "gerente" &&
             fecha !== "campamento"
-
           ) {
             acc[fecha] =
               asistencias[fecha] === "Permiso"

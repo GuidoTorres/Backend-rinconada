@@ -216,7 +216,7 @@ const evaluacion = sequelize.define(
   },
   {
     tableName: "evaluacion",
-    timestamp: true,
+    timestamps: true,
   }
 );
 
@@ -365,10 +365,13 @@ const asistencia = sequelize.define(
     fecha: DataTypes.STRING,
     campamento_id: DataTypes.INTEGER,
     hora_ingreso: DataTypes.STRING,
+    createdAt: DataTypes.DATE,
+    updatedAt: DataTypes.DATE
+
   },
   {
     tableName: "asistencia",
-    timestamp: false,
+    timestamps: true,
   }
 );
 
@@ -408,10 +411,12 @@ const trabajadorAsistencia = sequelize.define(
     hora_ingreso: DataTypes.STRING,
     tarde: DataTypes.STRING,
     revisada: DataTypes.BOOLEAN,
+    createdAt: DataTypes.DATE,
+    updatedAt: DataTypes.DATE
   },
   {
     tableName: "trabajador_asistencia",
-    timestamp: false,
+    timestamps: true,
   }
 );
 
