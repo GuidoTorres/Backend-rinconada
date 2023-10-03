@@ -167,9 +167,8 @@ const crearTareoAsociacion = async () => {
       })
       .flat()
       .filter((item) => item !== undefined);
-    await aprobacion_contrato_pago.bulkCreate(formatData, {
-      updateOnDuplicate: ["fecha_inicio", "fecha_fin"],
-    });
+      await guardarAprobacion(formatData)
+
   } catch (error) {
     console.log(error);
   }
@@ -387,13 +386,40 @@ const crearTareoIndividual = async () => {
         }
       }
     });
-    await aprobacion_contrato_pago.bulkCreate(aprobacionFilter, {
-      updateOnDuplicate: ["fecha_inicio", "fecha_fin"],
-    });
+    await guardarAprobacion(aprobacionFilter)
   } catch (error) {
     console.log(error);
   }
 };
+async function guardarAprobacion(aprobaciones) {
+  const subarrayIds = aprobaciones.map(a => a.subarray_id);
+  const contratoIds = aprobaciones.map(a => a.contrato_id);
+
+  // Buscando registros existentes
+  const existingRecords = await aprobacion_contrato_pago.findAll({
+    where: {
+      subarray_id: subarrayIds,
+      contrato_id: contratoIds
+    }
+  });
+
+  // Creando un conjunto con registros existentes para rápido acceso
+  const existingSet = new Set();
+  existingRecords.forEach(record => {
+    existingSet.add(`${record.subarray_id}-${record.contrato_id}`);
+  });
+
+  // Filtrando aprobaciones no existentes
+  const aprobacionesNoExistentes = aprobaciones.filter(aprobacion => {
+    const key = `${aprobacion.subarray_id}-${aprobacion.contrato_id}`;
+    return !existingSet.has(key);
+  });
+
+  // Si existen aprobaciones no existentes, entonces insertamos en masa
+  if (aprobacionesNoExistentes.length > 0) {
+    await aprobacion_contrato_pago.bulkCreate(aprobacionesNoExistentes);
+  }
+}
 
 const ordenarAsistencia = (inicio, fin, asistencias) => {
   return asistencias
