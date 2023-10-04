@@ -622,70 +622,72 @@ const registrarSuspension = async (req, res) => {
         .json({ msg: "No se encontro el contrato.", status: 500 });
     }
 
-    const fechaInicio = dayjs(fecha_suspension);
-    const fechaCumplimiento = fechaInicio
-      .add(parseInt(duracion), "month")
-      .format("YYYY-MM-DD");
-    // Crear la suspensión
-    const suspension = await suspensiones.create(
-      {
-        nombre,
-        fecha_suspension,
-        descripcion,
-        observacion,
-        duracion,
-        fecha_cumplimiento: fechaCumplimiento,
-        nivel_falta,
-        encargado_suspender,
-        estado,
-        terminado: false,
-        indeterminado: duracion === "0" ? true : false,
-        cargo,
-        cooperativa,
-        dni,
-        trabajador_contrato_id: traba_contrato.id,
-      },
-      { transaction: t }
-    );
+    console.log(traba_contrato?.trabajador_asistencia);
 
-    // Asociar jefes
-    for (let jefeData of jefes) {
-      const contrato = await trabajador_contrato.findOne({
-        where: { trabajador_dni: jefeData, estado: "Activo" },
-      });
+    // const fechaInicio = dayjs(fecha_suspension);
+    // const fechaCumplimiento = fechaInicio
+    //   .add(parseInt(duracion), "month")
+    //   .format("YYYY-MM-DD");
+    // // Crear la suspensión
+    // const suspension = await suspensiones.create(
+    //   {
+    //     nombre,
+    //     fecha_suspension,
+    //     descripcion,
+    //     observacion,
+    //     duracion,
+    //     fecha_cumplimiento: fechaCumplimiento,
+    //     nivel_falta,
+    //     encargado_suspender,
+    //     estado,
+    //     terminado: false,
+    //     indeterminado: duracion === "0" ? true : false,
+    //     cargo,
+    //     cooperativa,
+    //     dni,
+    //     trabajador_contrato_id: traba_contrato.id,
+    //   },
+    //   { transaction: t }
+    // );
 
-      await suspensiones_jefes.create(
-        {
-          trabajador_id: contrato.trabajador_dni,
-          contrato_id: contrato.contrato_id,
-          suspension_id: suspension.id,
-        },
-        { transaction: t }
-      );
-    }
-    if (tipo === "individual") {
-      if (traba_contrato) {
-        traba_contrato.estado = "Suspendido";
-        await traba_contrato.save({ transaction: t });
+    // // Asociar jefes
+    // for (let jefeData of jefes) {
+    //   const contrato = await trabajador_contrato.findOne({
+    //     where: { trabajador_dni: jefeData, estado: "Activo" },
+    //   });
 
-        if (traba_contrato.contrato) {
-          traba_contrato.contrato.finalizado = true;
-          await traba_contrato.contrato.save({ transaction: t });
-        }
+    //   await suspensiones_jefes.create(
+    //     {
+    //       trabajador_id: contrato.trabajador_dni,
+    //       contrato_id: contrato.contrato_id,
+    //       suspension_id: suspension.id,
+    //     },
+    //     { transaction: t }
+    //   );
+    // }
+    // if (tipo === "individual") {
+    //   if (traba_contrato) {
+    //     traba_contrato.estado = "Suspendido";
+    //     await traba_contrato.save({ transaction: t });
 
-        if (traba_contrato.evaluacion) {
-          traba_contrato.evaluacion.finalizado = true;
-          await traba_contrato.evaluacion.save({ transaction: t });
-        }
-      }
-    } else {
-      if (traba_contrato) {
-        traba_contrato.estado = "Suspendido";
-        await traba_contrato.save({ transaction: t });
-      }
+    //     if (traba_contrato.contrato) {
+    //       traba_contrato.contrato.finalizado = true;
+    //       await traba_contrato.contrato.save({ transaction: t });
+    //     }
 
-      await trabajador.update({ asociacion_id: null }, { where: { dni: dni } });
-    }
+    //     if (traba_contrato.evaluacion) {
+    //       traba_contrato.evaluacion.finalizado = true;
+    //       await traba_contrato.evaluacion.save({ transaction: t });
+    //     }
+    //   }
+    // } else {
+    //   if (traba_contrato) {
+    //     traba_contrato.estado = "Suspendido";
+    //     await traba_contrato.save({ transaction: t });
+    //   }
+
+    //   await trabajador.update({ asociacion_id: null }, { where: { dni: dni } });
+    // }
 
     // const asistencia = traba_contrato.trabajadorAsistencia[0].length;
 

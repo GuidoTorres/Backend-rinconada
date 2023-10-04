@@ -112,9 +112,6 @@ const getExcelAsistencia = async (req, res, next) => {
           include: [
             {
               model: contrato,
-              where: {
-                finalizado: { [Op.not]: true },
-              },
               attributes: { exclude: ["contrato_id"] },
             },
             {
@@ -140,9 +137,6 @@ const getExcelAsistencia = async (req, res, next) => {
       attributes: { exclude: ["trabajadorDni", "asistenciumId"] },
       where: { trabajador_id: filtereDni, asistencia_id: idFechaAsistencia },
     });
-    const trabajadoresExistentes = getTrabajadores.map(
-      (trabajador) => trabajador.dni
-    );
     //json con formato para guardar en la db de todos los trabajadores del excel
 
     const guardarTrabajadores = asistenciaExcelDiaActual
@@ -171,7 +165,7 @@ const getExcelAsistencia = async (req, res, next) => {
           trabajador_contrato_id: contrato || null,
         };
       })
-      .filter((data) => data.trabajador_contrato_id !== null);
+      
 
     let responseMessages = [];
     // Verificamos cuáles de los trabajadores filtrados tienen asistencia y cuáles no
@@ -192,7 +186,8 @@ const getExcelAsistencia = async (req, res, next) => {
       },
       { conAsistencia: [], sinAsistencia: [] }
     );
-
+    console.log(trabajadoresAsistencia.conAsistencia);
+    console.log(trabajadoresAsistencia.sinAsistencia);
     if (trabajadoresAsistencia.conAsistencia.length > 0) {
       // Actualizar asistencias de trabajadores con asistencia existente
       const resConAsis = await Promise.all(
