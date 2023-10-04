@@ -14,6 +14,7 @@ const {
 } = require("../../config/db");
 const { Op } = require("sequelize");
 const dayjs = require("dayjs");
+const { attempt } = require("lodash");
 
 // obtener lista de contratos
 const getContrato = async (req, res, next) => {
@@ -611,7 +612,7 @@ const registrarSuspension = async (req, res) => {
       include: [
         { model: contrato, attributes: { exclude: ["contrato_id"] } },
         evaluacion,
-        {model: trabajadorAsistencia}
+        { model: trabajadorAsistencia, attributes: ["asistencia"] },
       ],
     });
 
@@ -649,12 +650,14 @@ const registrarSuspension = async (req, res) => {
 
     // Asociar jefes
     for (let jefeData of jefes) {
-      let parsedJefe = JSON.parse(jefeData);
-      console.log(parsedJefe);
+      const contrato = await trabajador_contrato.findOne({
+        where: { trabajador_dni: jefeData, estado: "Activo" },
+      });
+
       await suspensiones_jefes.create(
         {
-          trabajador_id: parsedJefe.dni?.toString(),
-          contrato_id: parsedJefe.contrato_id,
+          trabajador_id: contrato.trabajador_dni,
+          contrato_id: contrato.contrato_id,
           suspension_id: suspension.id,
         },
         { transaction: t }
@@ -684,13 +687,11 @@ const registrarSuspension = async (req, res) => {
       await trabajador.update({ asociacion_id: null }, { where: { dni: dni } });
     }
 
-    const asistencia = traba_contrato.trabajadorAsistencia[0].length
+    // const asistencia = traba_contrato.trabajadorAsistencia[0].length;
 
-    const crearTareo = await aprobacion_contrato_pago.create({
-      contrato_id: contrato_id,
-
-
-    })
+    // const crearTareo = await aprobacion_contrato_pago.create({
+    //   contrato_id: contrato_id,
+    // });
 
     await t.commit();
 
@@ -701,6 +702,57 @@ const registrarSuspension = async (req, res) => {
     await t.rollback();
     console.log(error);
     res.status(500).send({ msg: "Error interno del servidor", status: 500 });
+  }
+};
+
+const getHistorialContratoTrabajadores = async (req, res) => {
+  try {
+    let id = req.params.id;
+
+    const trabajadores = await trabajador_contrato.findAll({
+      where: { contrato_id: id },
+      include: [
+        {
+          model: trabajador,
+          attributes: [
+            "dni",
+            "apellido_paterno",
+            "apellido_materno",
+            "nombre",
+            "fecha_nacimiento",
+            "telefono",
+          ],
+        },
+        {
+          model: evaluacion,
+          attributes: ["recomendado_por"],
+        },
+      ],
+    });
+
+    const formatData = trabajadores.map((item) => {
+      return {
+        nombre:
+          item?.trabajador?.apellido_paterno +
+          " " +
+          item?.trabajador?.apellido_materno +
+          " " +
+          item?.trabajador?.nombre,
+        dni: item?.trabajador?.dni,
+        fecha_nacimiento: dayjs(item?.trabajador?.fecha_nacimiento).format(
+          "DD-MM-YYYY"
+        ),
+        telefono: item?.trabajador?.telefono,
+        recomendado_por: item?.evaluacion?.recomendado_por,
+      };
+    });
+    res.status(200).json({ data: formatData, status: 200 });
+  } catch (error) {
+    console.log(error);
+    res.status(500).send({
+      msg: "No se pudo obtener la lista de trabajadores.",
+      status: 500,
+    });
   }
 };
 
@@ -717,4 +769,5 @@ module.exports = {
   getTrabajadorContratoEvaluacion,
   updateAllContratos,
   registrarSuspension,
+  getHistorialContratoTrabajadores,
 };

@@ -5,6 +5,7 @@ const checkAuth = require("../middleware/auth");
 
 router.get("/", checkAuth, contrato.getContrato);
 router.get("/trabajador/evaluacion", contrato.getTrabajadorContratoEvaluacion);
+router.get("/asociacion/trabajador/:id", contrato.getHistorialContratoTrabajadores)
 router.get("/last", checkAuth, contrato.getLastId);
 router.get("/activar/:id", contrato.activarContrato);
 router.get("/updateall", contrato.updateAllContratos)

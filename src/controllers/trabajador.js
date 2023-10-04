@@ -99,7 +99,7 @@ const getTrabajador = async (req, res, next) => {
                 "campamento_id",
                 "cooperativa",
               ],
-              required:false
+              required: false,
             },
             {
               model: contrato,
@@ -131,7 +131,7 @@ const getTrabajador = async (req, res, next) => {
               required: false,
             },
           ],
-          required:false
+          required: false,
         },
       ],
       // offset: (page - 1) * pageSize,
@@ -140,24 +140,27 @@ const getTrabajador = async (req, res, next) => {
 
     const suspendidos = await trabajador_contrato.findAll({
       where: { estado: "Suspendido" },
-      include: [{
-        model: suspensiones,
-        where: { terminado: false }  // Filtrar por suspensiones que no estén terminadas.
-      }],
+      include: [
+        {
+          model: suspensiones,
+          where: { terminado: false }, // Filtrar por suspensiones que no estén terminadas.
+        },
+      ],
     });
-    
+
     // 2. Itera sobre cada fila.
     for (let item of suspendidos) {
       if (item.suspensiones) {
         for (let susp of item.suspensiones) {
-    
           // 3. Verifica la fecha_cumplimiento usando dayjs.
-          if (dayjs().isAfter(susp.fecha_cumplimiento)) { 
-    
+          if (dayjs().isAfter(susp.fecha_cumplimiento)) {
             // Actualiza el campo 'terminado' a true.
-            await suspensiones.update({ terminado: true }, {
-              where: { id: susp.id }
-            });
+            await suspensiones.update(
+              { terminado: true },
+              {
+                where: { id: susp.id },
+              }
+            );
           }
         }
       }
@@ -184,8 +187,8 @@ const getTrabajador = async (req, res, next) => {
           deshabilitado: item?.deshabilitado,
           foto: item?.foto,
           eliminar: item?.eliminar,
-          evaluacion: trabajador_contrato[0]?.evaluacion ,
-          contrato: trabajador_contrato[0]?.contrato ,
+          evaluacion: trabajador_contrato[0]?.evaluacion,
+          contrato: trabajador_contrato[0]?.contrato,
           suspendido:
             item?.trabajador_contratos
               ?.at(-1)
@@ -670,12 +673,9 @@ const getContratoSuspendidoById = async (req, res) => {
             cargo: suspension?.cargo,
             cooperativa: suspension?.cooperativa,
             trabajador_contrato_id: suspension?.trabajador_contrato_id,
-            jefes: suspension?.suspensiones_jefes.map((dat) => {
-              return {
-                contrato_id: dat?.contrato_id,
-                dni: dat?.trabajador_id,
-              };
-            }),
+            jefes: suspension?.suspensiones_jefes.map(
+              (dat) => dat?.trabajador_id
+            ),
             nombre: `${item.trabajador.apellido_paterno} ${item.trabajador.apellido_materno} ${item.trabajador.nombre}`,
             contrato: Object.keys(item?.contrato).filter((dat) => {
               if (dat.finalizado === false) {
