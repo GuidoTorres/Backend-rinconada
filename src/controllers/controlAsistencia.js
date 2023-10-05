@@ -77,15 +77,6 @@ const crearTareoAsociacion = async () => {
         cargo_id: [15, 44],
       },
     });
-    const existingTareos = await aprobacion_contrato_pago.findAll({
-      attributes: ["subarray_id", "contrato_id"],
-    });
-
-    const tareoMap = new Map();
-    existingTareos.forEach((t) => {
-      const key = `${t.subarray_id}-${t.contrato_id}`;
-      tareoMap.set(key, true);
-    });
 
     const formatData = asociaciones
       .map((asociacion) => {
@@ -104,11 +95,6 @@ const crearTareoAsociacion = async () => {
         let currentDate = inicio;
         let indexAsistencia = 0;
 
-        const keyToCheck = `${subarrayId}-${contrato.id}`; // Suponiendo que el ID del contrato es lo que necesitas aquí.
-        if (tareoMap.has(keyToCheck)) {
-          // Este tareo ya existe, así que continúa con el siguiente trabajador
-          return;
-        }
 
         // Identificar el trabajador_contrato con el trabajador de menor código
         const trabajadorContratoMenorCodigo =
@@ -166,7 +152,6 @@ const crearTareoAsociacion = async () => {
         return subarrays;
       })
       .flat()
-      .filter((item) => item !== undefined);
       await guardarAprobacion(formatData)
 
   } catch (error) {
@@ -386,7 +371,7 @@ const crearTareoIndividual = async () => {
         }
       }
     });
-    await guardarAprobacion(aprobacionFilter)
+    // await guardarAprobacion(aprobacionFilter)
   } catch (error) {
     console.log(error);
   }
@@ -398,23 +383,20 @@ async function guardarAprobacion(aprobaciones) {
   // Buscando registros existentes
   const existingRecords = await aprobacion_contrato_pago.findAll({
     where: {
-      subarray_id: subarrayIds,
-      contrato_id: contratoIds
-    }
+      subarray_id: { [Op.in]: subarrayIds },
+      contrato_id: { [Op.in]: contratoIds }
+  }
   });
-
   // Creando un conjunto con registros existentes para rápido acceso
   const existingSet = new Set();
   existingRecords.forEach(record => {
-    existingSet.add(`${record.subarray_id}-${record.contrato_id}`);
+    existingSet.add(`${record.subarray_id.toString()}-${record.contrato_id.toString()}`);
   });
-
   // Filtrando aprobaciones no existentes
   const aprobacionesNoExistentes = aprobaciones.filter(aprobacion => {
-    const key = `${aprobacion.subarray_id}-${aprobacion.contrato_id}`;
+    const key = `${aprobacion.subarray_id.toString()}-${aprobacion.contrato_id.toString()}`;
     return !existingSet.has(key);
   });
-
   // Si existen aprobaciones no existentes, entonces insertamos en masa
   if (aprobacionesNoExistentes.length > 0) {
     await aprobacion_contrato_pago.bulkCreate(aprobacionesNoExistentes);
