@@ -452,72 +452,26 @@ const pago = sequelize.define(
       autoIncrement: true,
       allowNull: false,
     },
-
-    teletrans: DataTypes.STRING,
+    volquetes: DataTypes.INTEGER,
+    teletrans: DataTypes.FLOAT,
     observacion: DataTypes.STRING,
     fecha_pago: DataTypes.STRING,
-    estado: DataTypes.BOOLEAN,
-    tipo: DataTypes.STRING,
-    volquetes: DataTypes.STRING,
+    estado: DataTypes.STRING,
+    tipo_pago: DataTypes.STRING,
     unidad_produccion: DataTypes.STRING,
+    destino_id: DataTypes.INTEGER,
+    validacion: DataTypes.BOOLEAN,
+    monto_total: DataTypes.FLOAT,
+    createdAt: DataTypes.DATE,
+    updatedAt: DataTypes.DATE,
   },
   {
     tableName: "pago",
-    timestamp: false,
+    timestamps: true,
   }
 );
-
-// const pago = sequelize.define(
-//   "pago",
-
-//   {
-//     id: {
-//       type: DataTypes.INTEGER,
-//       primaryKey: true,
-//       autoIncrement: true,
-//       allowNull: false,
-//     },
-//     quincena: DataTypes.INTEGER,
-//     volquetes: Datatypes.INTEGER,
-//     teletrans: DataTypes.FLOAT,
-//     tipo_pago: DataTypes.STRING,
-//     observacion: DataTypes.STRING,
-//     unidad_produccion: DataTypes.STRING,
-//     destino_id: DataTypes.INTEGER,
-//     validacion: DataTypes.BOOLEAN,
-//     monto_total: DataTypes.FLOAT,
-//     fecha_pago: DataTypes.DATE
-//   },
-//   {
-//     tableName: "pago",
-//     timestamp: true,
-//   }
-// );
-
-// const detalle_pago = sequelize.define(
-//   "detalle_pago",
-
-//   {
-//     id: {
-//       type: DataTypes.INTEGER,
-//       primaryKey: true,
-//       autoIncrement: true,
-//       allowNull: false,
-//     },
-//     pago_id: DataTypes.INTEGER,
-//     trabajador_id: DatatTypes.INTEGER,
-//     asociacion_id: DataTypes.INTEGER,
-//     contrato_id: DataTypes.INTEGER,
-//     monto_asignado: DataTypes.FLOAT
-//   },
-//   {
-//     tableName: "detalle_pago",
-//     timestamp: true,
-//   }
-// );
-
-const contrato_pago = sequelize.define(
-  "contrato_pago",
+const detalle_pago = sequelize.define(
+  "detalle_pago",
 
   {
     id: {
@@ -526,17 +480,20 @@ const contrato_pago = sequelize.define(
       autoIncrement: true,
       allowNull: false,
     },
-    contrato_id: DataTypes.INTEGER,
     pago_id: DataTypes.INTEGER,
-    teletrans: DataTypes.STRING,
-    volquetes: DataTypes.STRING,
-    quincena: DataTypes.STRING,
+    trabajador_contrato_id: DataTypes.INTEGER,
+    asociacion_id: DataTypes.INTEGER,
+    monto: DataTypes.FLOAT,
+    quincena: DataTypes.INTEGER,
+    createdAt: DataTypes.DATE,
+    updatedAt: DataTypes.DATE,
   },
   {
-    tableName: "contrato_pago",
-    timestamp: false,
+    tableName: "detalle_pago",
+    timestamps: true,
   }
 );
+
 
 const proveedor = sequelize.define(
   "proveedor",
@@ -1024,25 +981,6 @@ const trapiche = sequelize.define(
   }
 );
 
-const ayuda_pago = sequelize.define(
-  "ayuda_pago",
-
-  {
-    id: {
-      type: DataTypes.INTEGER,
-      primaryKey: true,
-      autoIncrement: true,
-      allowNull: false,
-    },
-    trabajador_dni: DataTypes.STRING,
-    pago_id: DataTypes.INTEGER,
-    teletrans: DataTypes.STRING,
-  },
-  {
-    tableName: "ayuda_pago",
-    timestamp: false,
-  }
-);
 
 const destino = sequelize.define(
   "destino",
@@ -1086,46 +1024,6 @@ const destino_pago = sequelize.define(
   }
 );
 
-const pago_asociacion = sequelize.define(
-  "pago_asociacion",
-
-  {
-    id: {
-      type: DataTypes.INTEGER,
-      primaryKey: true,
-      autoIncrement: true,
-      allowNull: false,
-    },
-    teletrans: DataTypes.STRING,
-    contrato_pago_id: DataTypes.INTEGER,
-    trabajador_dni: DataTypes.INTEGER,
-    volquetes: DataTypes.STRING,
-  },
-  {
-    tableName: "pago_asociacion",
-    timestamp: false,
-  }
-);
-const contrato_pago_trabajador = sequelize.define(
-  "contrato_pago_trabajador",
-
-  {
-    id: {
-      type: DataTypes.INTEGER,
-      primaryKey: true,
-      autoIncrement: true,
-      allowNull: false,
-    },
-    contrato_pago_id: DataTypes.INTEGER,
-    trabajador_dni: DataTypes.INTEGER,
-    volquetes: DataTypes.STRING,
-    teletrans: DataTypes.STRING,
-  },
-  {
-    tableName: "contrato_pago_trabajador",
-    timestamp: false,
-  }
-);
 
 const suspensiones = sequelize.define(
   "suspensiones",
@@ -1555,29 +1453,6 @@ entrada_salida.belongsTo(area, { foreignKey: "area_id", onDelete: "CASCADE" });
 rol.hasMany(permisos, { foreignKey: "rol_id", onDelete: "CASCADE" });
 permisos.belongsTo(rol, { foreignKey: "rol_id", onDelete: "CASCADE" });
 
-contrato.hasMany(contrato_pago, {
-  foreignKey: "contrato_id",
-  onDelete: "CASCADE",
-});
-contrato_pago.belongsTo(contrato, {
-  foreignKey: "contrato_id",
-  onDelete: "CASCADE",
-});
-
-pago.hasMany(contrato_pago, { foreignKey: "pago_id", onDelete: "CASCADE" });
-contrato_pago.belongsTo(pago, { foreignKey: "pago_id", onDelete: "CASCADE" });
-
-trabajador.hasMany(ayuda_pago, {
-  foreignKey: "trabajador_dni",
-  onDelete: "CASCADE",
-});
-ayuda_pago.belongsTo(trabajador, {
-  foreignKey: "trabajador_dni",
-  onDelete: "CASCADE",
-});
-
-pago.hasMany(ayuda_pago, { foreignKey: "pago_id", onDelete: "CASCADE" });
-ayuda_pago.belongsTo(pago, { foreignKey: "pago_id", onDelete: "CASCADE" });
 
 pago.hasMany(destino_pago, { foreignKey: "pago_id", onDelete: "CASCADE" });
 destino_pago.belongsTo(pago, { foreignKey: "pago_id", onDelete: "CASCADE" });
@@ -1591,23 +1466,6 @@ destino_pago.belongsTo(destino, {
   onDelete: "CASCADE",
 });
 
-contrato_pago.hasMany(pago_asociacion, {
-  foreignKey: "contrato_pago_id",
-  onDelete: "CASCADE",
-});
-pago_asociacion.belongsTo(contrato_pago, {
-  foreignKey: "contrato_pago_id",
-  onDelete: "CASCADE",
-});
-
-trabajador.hasMany(pago_asociacion, {
-  foreignKey: "trabajador_dni",
-  onDelete: "CASCADE",
-});
-pago_asociacion.belongsTo(trabajador, {
-  foreignKey: "trabajador_dni",
-  onDelete: "CASCADE",
-});
 
 contrato.hasMany(aprobacion_contrato_pago, {
   foreignKey: "contrato_id",
@@ -1618,23 +1476,6 @@ aprobacion_contrato_pago.belongsTo(contrato, {
   onDelete: "CASCADE",
 });
 
-contrato_pago.hasMany(contrato_pago_trabajador, {
-  foreignKey: "contrato_pago_id",
-  onDelete: "CASCADE",
-});
-contrato_pago_trabajador.belongsTo(contrato_pago, {
-  foreignKey: "contrato_pago_id",
-  onDelete: "CASCADE",
-});
-
-trabajador.hasMany(contrato_pago_trabajador, {
-  foreignKey: "trabajador_dni",
-  onDelete: "CASCADE",
-});
-contrato_pago_trabajador.belongsTo(trabajador, {
-  foreignKey: "trabajador_dni",
-  onDelete: "CASCADE",
-});
 
 trabajador_contrato.hasMany(suspensiones, {
   foreignKey: "trabajador_contrato_id",
@@ -1658,6 +1499,15 @@ incidentes.belongsTo(trabajador_contrato,{ foreignKey: "trabajador_contrato_id"}
 usuario.hasOne(trabajador, {foreignKey: "usuario_id"})
 trabajador.belongsTo(usuario, {foreignKey: "usuario_id"})
 
+pago.hasMany(detalle_pago, {foreignKey: "pago_id"});
+detalle_pago.belongsTo(pago, {foreignKey: "pago_id"});
+
+trabajador_contrato.hasMany(detalle_pago, {foreignKey: 'trabajador_contrato_id'});
+detalle_pago.belongsTo(trabajador_contrato, {foreignKey: 'trabajador_contrato_id'});
+
+asociacion.hasMany(detalle_pago, {foreignKey:"asociacion_id"})
+detalle_pago.belongsTo(asociacion, {foreignKey: "asociacion_id"})
+
 module.exports = {
   sequelize,
   DataTypes,
@@ -1677,6 +1527,7 @@ module.exports = {
   trabajadorAsistencia,
   socio,
   pago,
+  detalle_pago,
   proveedor,
   sucursal,
   ingresos_egresos,
@@ -1696,14 +1547,10 @@ module.exports = {
   permisos,
   trapiche,
   volquete,
-  contrato_pago,
-  ayuda_pago,
   destino,
   destino_pago,
-  pago_asociacion,
   trabajador_contrato,
   aprobacion_contrato_pago,
-  contrato_pago_trabajador,
   suspensiones,
   suspensiones_jefes,
   incidentes

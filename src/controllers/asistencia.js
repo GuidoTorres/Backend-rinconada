@@ -108,7 +108,6 @@ const getExcelAsistencia = async (req, res, next) => {
           model: trabajador_contrato,
           where: { estado: "Activo" },
           attributes: ["id"],
-          required: true,
           include: [
             {
               model: contrato,
@@ -166,7 +165,7 @@ const getExcelAsistencia = async (req, res, next) => {
         };
       })
       
-
+      console.log(guardarTrabajadores);
     let responseMessages = [];
     // Verificamos cuáles de los trabajadores filtrados tienen asistencia y cuáles no
     const trabajadoresAsistencia = guardarTrabajadores.reduce(
@@ -197,6 +196,7 @@ const getExcelAsistencia = async (req, res, next) => {
               asistencia: trabajador.asistencia,
               hora_ingreso: trabajador.hora_ingreso,
               tarde: trabajador.tarde,
+              trabajador_contrato_id: trabajador.trabajador_contrato_id
             },
             {
               where: {

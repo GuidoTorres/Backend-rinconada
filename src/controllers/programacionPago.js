@@ -7,14 +7,14 @@ const {
   trabajador_contrato,
   trabajador,
   pago,
-  contrato_pago,
   saldo,
+  detalle_pago,
 } = require("../../config/db");
 
 const getAprobacion = async (req, res, next) => {
   try {
     const all = await aprobacion_contrato_pago.findAll({
-      where: { asociacion_id: { [Op.is]: null } },
+      where: { asociacion_id: { [Op.is]: null }, pagado: { [Op.not]: true } },
       include: [
         {
           model: contrato,
@@ -26,33 +26,38 @@ const getAprobacion = async (req, res, next) => {
               model: trabajador_contrato,
               include: [
                 { model: trabajador, attributes: { exclude: ["usuarioId"] } },
+                { model: detalle_pago, include: [{ model: pago }] },
               ],
             },
-            { model: contrato_pago, include: [{ model: pago }] },
           ],
         },
       ],
     });
 
-    const filterAprobacion = all.filter(item => item.estado=== true)
+    // const filterAprobacion = all.filter(item => item.estado=== true)
 
-    const format = filterAprobacion
+    const format = all
       .map((item, i) => {
         // Calcula el total de pagos
-        const pagosTotal = item.contrato.contrato_pagos
-        .filter((pago) => pago.quincena === item.subarray_id)
-        .reduce((acc, pago) => acc + ((parseFloat(pago.volquetes) || 0) * 4) + (parseFloat(pago.teletrans) || 0), 0);
-    
-
+        const pagosTotal =
+          item?.contrato?.trabajador_contratos[0]?.detalle_pagos
+            ?.filter((pago) => pago?.pago?.quincena == item.subarray_id)
+            ?.reduce(
+              (acc, pago) =>
+                acc +
+                (parseFloat(pago.volquetes) || 0) * 4 +
+                (parseFloat(pago.teletrans) || 0),
+              0
+            );
         // Calcula el saldo final
         const saldoFinal = item.contrato.teletrans.at(-1).saldo - pagosTotal;
         if (saldoFinal <= 0) {
           updateEstadoAprobacionContratoPago(item.id);
         }
-        if(saldoFinal > 0){
-
+        if (saldoFinal > 0) {
           return {
             quincena: item.subarray_id,
+
             observaciones: item.observaciones,
             nombre: item?.nombre,
             cargo: item?.contrato?.cargo?.nombre,
@@ -64,18 +69,13 @@ const getAprobacion = async (req, res, next) => {
             contrato_id: item?.contrato_id,
             dni: item?.dni,
             estado: item.estado,
+            trabajador_contrato_id: item?.contrato?.trabajador_contratos[0]?.id,
             telefono: item.contrato.trabajador_contratos
               ?.map((data) => data.trabajador.telefono)
               .toString(),
-            pagos: item.contrato.contrato_pagos.filter(
-              (pago) => pago.quincena === item.subarray_id
-            ),
             saldoFinal: saldoFinal,
           };
-
         }
-
-
       })
       .filter((item) => item !== undefined)
       .map((item, i) => {
@@ -99,7 +99,5 @@ async function updateEstadoAprobacionContratoPago(id) {
     console.log(error);
   }
 }
-
-
 
 module.exports = { getAprobacion };
