@@ -253,6 +253,7 @@ const contrato = sequelize.define(
     puesto_id: DataTypes.INTEGER,
     suspendido: DataTypes.BOOLEAN,
     fecha_fin_estimada: DataTypes.BOOLEAN,
+    relevo: DataTypes.STRING,
     createdAt: DataTypes.DATE,
     updatedAt: DataTypes.DATE
   },

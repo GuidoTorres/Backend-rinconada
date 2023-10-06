@@ -8,6 +8,7 @@ const checkAuditoria = require("../middleware/auditoria");
 
 router.get("/", trabajador.getTrabajador);
 router.get("/contrato", trabajador.getTrabajadorConContrato)
+router.get("/lista", trabajador.getListaTrabajadoreSelect)
 router.get("/:id", trabajador.getTrabajarById);
 router.get("/aprobado",checkAuth, trabajador.getTrabajadorPagoAprobado);
 router.get("/last/id",checkAuth, trabajador.getLastId);

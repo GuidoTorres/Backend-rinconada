@@ -11,11 +11,10 @@ const {
   suspensiones,
   suspensiones_jefes,
   trabajadorAsistencia,
+  asistencia,
 } = require("../../config/db");
 const { Op } = require("sequelize");
 const dayjs = require("dayjs");
-const { attempt } = require("lodash");
-
 // obtener lista de contratos
 const getContrato = async (req, res, next) => {
   try {
@@ -104,6 +103,7 @@ const getContratoById = async (req, res, next) => {
             finalizado: data?.contrato?.finalizado,
             suspendido: data?.contrato?.suspendido,
             cargo: data?.contrato?.cargo?.nombre,
+            relevo: data?.contrato?.relevo,
           };
 
           return {
@@ -280,20 +280,22 @@ const postContratoAsociacion = async (req, res, next) => {
     if (req.body.trabajadores.length > 0) {
       // Crear contrato con transacción
       const post = await contrato.create(info, { transaction });
-      const contraPago = req?.body?.trabajadores?.map((item) => {
-        return {
-          trabajador_dni: item,
-          contrato_id: post.id,
-        };
-      });
-      // Crear trabajador_contrato con transacción
-      const createContraPago = await trabajador_contrato.bulkCreate(
-        contraPago,
-        {
-          ignoreDuplicates: false,
-          transaction, // incluir la transacción aquí
+      const updatePromises = req.body.trabajadores.map(async (item) => {
+        // Buscar el registro existente que coincida con trabajador_dni y evaluacion_id
+        const existingRecord = await trabajador_contrato.findOne({
+          where: { trabajador_dni: item, estado: 'Activo' },
+          transaction
+        });
+        // Si se encuentra un registro existente, actualizarlo
+        if (existingRecord) {
+          return existingRecord.update({ contrato_id: post.id }, { transaction });
         }
-      );
+
+        return null;
+      });
+      await Promise.all(updatePromises);
+      // Crear trabajador_contrato con transacción
+
       if (post) {
         let volquete = parseInt(req.body?.volquete) || 0;
         let teletran = parseInt(req.body?.teletran) || 0;
@@ -329,7 +331,6 @@ const postContratoAsociacion = async (req, res, next) => {
 //actualizar el contrato
 const updateContrato = async (req, res, next) => {
   let id = req.params.id;
-  console.log(req.body);
   try {
     let info = {
       ...req.body,
@@ -610,9 +611,32 @@ const registrarSuspension = async (req, res) => {
         contrato_id: contrato_id,
       },
       include: [
-        { model: contrato, attributes: { exclude: ["contrato_id"] } },
+        {
+          model: trabajador,
+          attributes: [
+            "apellido_paterno",
+            "apellido_materno",
+            "nombre",
+            "dni",
+            "asociacion_id",
+          ],
+        },
+        {
+          model: contrato,
+          attributes: ["id", "fecha_fin", "volquete", "teletran"],
+          include: [
+            {
+              model: aprobacion_contrato_pago,
+              attributes: ["fecha_inicio", "fecha_fin", "subarray_id"],
+            },
+          ],
+        },
         evaluacion,
-        { model: trabajadorAsistencia, attributes: ["asistencia"] },
+        {
+          model: trabajadorAsistencia,
+          attributes: ["asistencia"],
+          include: [{ model: asistencia, attributes: ["fecha"] }],
+        },
       ],
     });
 
@@ -621,79 +645,125 @@ const registrarSuspension = async (req, res) => {
         .status(500)
         .json({ msg: "No se encontro el contrato.", status: 500 });
     }
+    const ultimoTareo =
+      traba_contrato?.contrato?.aprobacion_contrato_pagos.at(-1);
+    let fechaIni;
+    if (ultimoTareo) {
+      const fechaString = ultimoTareo.fecha_fin;
+      const partes = fechaString.split("-");
+      const fechaReformateada = `${partes[2]}-${partes[1]}-${partes[0]}`;
+      const fechaObjeto = new Date(fechaReformateada);
+      fechaIni = dayjs(fechaObjeto);
+    } else {
+      const fechaString1 = traba_contrato.contrato.fecha_inicio;
+      const partes1 = fechaString1.split("-");
+      const fechaReformateada1 = `${partes1[2]}-${partes1[1]}-${partes1[0]}`;
+      const fechaObjeto1 = new Date(fechaReformateada1);
+      fechaIni = dayjs(fechaObjeto1);
+    }
+    const asistencias = traba_contrato.trabajador_asistencia;
+    const diasAsistencia = asistencias?.filter(
+      (asistencia) =>
+        dayjs(asistencia?.asistencium?.fecha).isAfter(fechaIni) &&
+        [
+          "Asistio",
+          "Comisión",
+          "Permiso remunerado",
+          "Vacaciones",
+          "Descanso medico",
+          "Dia Libre",
+        ].includes(asistencia.asistencia)
+    ).length;
 
-    console.log(traba_contrato?.trabajador_asistencia);
+    if (diasAsistencia) {
+      const fechaFin = dayjs(fechaIni)
+        .add(diasAsistencia, "day")
+        .format("YYYY-MM-DD");
+      const traba = traba_contrato.trabajador;
+      const dataTareo = {
+        contrato_id: contrato_id,
+        fecha_inicio: fechaIni.format("DD-MM-YYYY"),
+        fecha_fin: dayjs(fechaFin).format("DD-MM-YYYY"),
+        nombre:
+          traba.apellido_paterno +
+          " " +
+          traba.apellido_materno +
+          " " +
+          traba.nombre,
+        dias_laborados: diasAsistencia,
+        subarray_id: ultimoTareo ? parseInt(ultimoTareo.subarray_id) + 1 : 1,
+        volquete: traba_contrato.contrato.volquete,
+        teletran: traba_contrato.contrato.teletran,
+        asociacion_id: traba.asociacion_id,
+        dni: traba.dni,
+      };
 
-    // const fechaInicio = dayjs(fecha_suspension);
-    // const fechaCumplimiento = fechaInicio
-    //   .add(parseInt(duracion), "month")
-    //   .format("YYYY-MM-DD");
-    // // Crear la suspensión
-    // const suspension = await suspensiones.create(
-    //   {
-    //     nombre,
-    //     fecha_suspension,
-    //     descripcion,
-    //     observacion,
-    //     duracion,
-    //     fecha_cumplimiento: fechaCumplimiento,
-    //     nivel_falta,
-    //     encargado_suspender,
-    //     estado,
-    //     terminado: false,
-    //     indeterminado: duracion === "0" ? true : false,
-    //     cargo,
-    //     cooperativa,
-    //     dni,
-    //     trabajador_contrato_id: traba_contrato.id,
-    //   },
-    //   { transaction: t }
-    // );
+      await aprobacion_contrato_pago.create(dataTareo, { transaction: t });
+    }
+    const fechaInicio = dayjs(fecha_suspension);
+    const fechaCumplimiento = fechaInicio
+      .add(parseInt(duracion), "month")
+      .format("YYYY-MM-DD");
+    // Crear la suspensión
+    const suspension = await suspensiones.create(
+      {
+        nombre,
+        fecha_suspension,
+        descripcion,
+        observacion,
+        duracion,
+        fecha_cumplimiento: fechaCumplimiento,
+        nivel_falta,
+        encargado_suspender,
+        estado,
+        terminado: false,
+        indeterminado: duracion === "0" ? true : false,
+        cargo,
+        cooperativa,
+        dni,
+        trabajador_contrato_id: traba_contrato.id,
+      },
+      { transaction: t }
+    );
 
-    // // Asociar jefes
-    // for (let jefeData of jefes) {
-    //   const contrato = await trabajador_contrato.findOne({
-    //     where: { trabajador_dni: jefeData, estado: "Activo" },
-    //   });
+    // Asociar jefes
+    for (let jefeData of jefes) {
+      const contrato = await trabajador_contrato.findOne({
+        where: { trabajador_dni: jefeData, estado: "Activo" },
+      });
 
-    //   await suspensiones_jefes.create(
-    //     {
-    //       trabajador_id: contrato.trabajador_dni,
-    //       contrato_id: contrato.contrato_id,
-    //       suspension_id: suspension.id,
-    //     },
-    //     { transaction: t }
-    //   );
-    // }
-    // if (tipo === "individual") {
-    //   if (traba_contrato) {
-    //     traba_contrato.estado = "Suspendido";
-    //     await traba_contrato.save({ transaction: t });
+      await suspensiones_jefes.create(
+        {
+          trabajador_id: contrato.trabajador_dni,
+          contrato_id: contrato.contrato_id,
+          suspension_id: suspension.id,
+        },
+        { transaction: t }
+      );
+    }
+    if (tipo === "individual") {
+      if (traba_contrato) {
+        traba_contrato.estado = "Suspendido";
+        await traba_contrato.save({ transaction: t });
 
-    //     if (traba_contrato.contrato) {
-    //       traba_contrato.contrato.finalizado = true;
-    //       await traba_contrato.contrato.save({ transaction: t });
-    //     }
+        if (traba_contrato.contrato) {
+          traba_contrato.contrato.finalizado = true;
+          await traba_contrato.contrato.save({ transaction: t });
+        }
 
-    //     if (traba_contrato.evaluacion) {
-    //       traba_contrato.evaluacion.finalizado = true;
-    //       await traba_contrato.evaluacion.save({ transaction: t });
-    //     }
-    //   }
-    // } else {
-    //   if (traba_contrato) {
-    //     traba_contrato.estado = "Suspendido";
-    //     await traba_contrato.save({ transaction: t });
-    //   }
+        if (traba_contrato.evaluacion) {
+          traba_contrato.evaluacion.finalizado = true;
+          await traba_contrato.evaluacion.save({ transaction: t });
+        }
+      }
+    } else {
+      if (traba_contrato) {
+        traba_contrato.estado = "Suspendido";
+        await traba_contrato.save({ transaction: t });
+      }
 
-    //   await trabajador.update({ asociacion_id: null }, { where: { dni: dni } });
-    // }
-
-    // const asistencia = traba_contrato.trabajadorAsistencia[0].length;
-
-    // const crearTareo = await aprobacion_contrato_pago.create({
-    //   contrato_id: contrato_id,
-    // });
+      await trabajador.update({ asociacion_id: null }, { where: { dni: dni } });
+    }
 
     await t.commit();
 

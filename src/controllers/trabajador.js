@@ -697,6 +697,30 @@ const getContratoSuspendidoById = async (req, res) => {
   }
 };
 
+const getListaTrabajadoreSelect = async (req, res) => {
+  try {
+    const getAll = await trabajador.findAll({
+      attributes: ["apellido_paterno", "apellido_materno", "nombre"],
+    });
+
+    const formatData = getAll.map((item) => {
+      return {
+        nombre:
+          item?.apellido_paterno +
+          " " +
+          item?.apellido_materno +
+          " " +
+          item?.nombre,
+      };
+    });
+
+    return res.status(200).json({ data: formatData });
+  } catch (error) {
+    console.log(error);
+    res.status(500).json(error);
+  }
+};
+
 module.exports = {
   getTrabajador,
   postTrabajador,
@@ -709,4 +733,5 @@ module.exports = {
   getTrabajarById,
   getTrabajadorConContrato,
   getContratoSuspendidoById,
+  getListaTrabajadoreSelect
 };
