@@ -137,7 +137,7 @@ const getExcelAsistencia = async (req, res, next) => {
       where: { trabajador_id: filtereDni, asistencia_id: idFechaAsistencia },
     });
     //json con formato para guardar en la db de todos los trabajadores del excel
-
+    const uniqueMap = new Map();
     const guardarTrabajadores = asistenciaExcelDiaActual
       .map((item) => {
         const trabajadorData = getTrabajadores.find((t) => t.dni == item.dni);
@@ -163,7 +163,13 @@ const getExcelAsistencia = async (req, res, next) => {
           tarde: diferencia_minutos > umbral_tardanza ? "Si" : "No",
           trabajador_contrato_id: contrato || null,
         };
-      })
+      }).reduce((accumulator, item) => {
+        if (!uniqueMap.has(item.trabajador_id)) {
+            uniqueMap.set(item.trabajador_id, true);
+            accumulator.push(item);
+        }
+        return accumulator;
+    }, []);
       
       console.log(guardarTrabajadores);
     let responseMessages = [];
