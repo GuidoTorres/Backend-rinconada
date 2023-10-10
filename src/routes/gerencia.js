@@ -6,6 +6,7 @@ const checkAuth = require("../middleware/auth");
 
 
 router.get("/",checkAuth, gerencia.getGerencia)
+router.get("/area", gerencia.getGerenciaAreaCargo)
 // router.get("/:id", rol.getRolById)
 // router.post("/", rol.postRol)
 // router.put("/:id", rol.updateRol)

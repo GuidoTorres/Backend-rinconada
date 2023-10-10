@@ -6,7 +6,7 @@ const images = require("../middleware/multerImage");
 
 router.get("/", planilla.getPlanilla);
 router.get("/pagos",checkAuth, planilla.getPlanillaPago);
-router.get("/pagos/lista",checkAuth, planilla.getListaPago);
+router.get("/pagos/lista", planilla.getListaPago);
 router.get("/asociacion",checkAuth, planilla.getListaAsociacionProgramada);
 router.get("/campamento",checkAuth, planilla.campamentoPlanilla);
 router.get("/historial/:id",checkAuth, planilla.getPlanillaHistoriaTrabajador);

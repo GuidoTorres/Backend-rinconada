@@ -7,40 +7,23 @@ const {
   destino_pago,
 } = require("../../config/db");
 
-
 // obtener la lista de pagos de casa
 const getEmpresaPago = async (req, res, next) => {
   try {
-    const get = await contrato_pago.findAll({
-      attributes: { exclude: "contrato_pago_id" },
-      include: [
-        {
-          model: pago,
-          where: { tipo: "casa" },
-        },
-        {
-          model: contrato,
-          attributes: { exclude: ["contrato_id"] },
-          include: [{ model: empresa }],
-        },
-      ],
+    const casa = await pago.findAll({
+      where: { tipo_pago: "casa" },
     });
 
-    const formatData = get
-      .map((item) => {
-        return {
-          id: item?.id,
-          pago_id: item.pago_id,
-          razon_social: item?.contrato?.empresa?.razon_social,
-          ruc: item?.contrato?.empresa?.ruc,
-          contrato_id: item?.contrato?.id,
-          pago: item.pago,
-        };
-      })
-      .filter(
-        (item) =>
-          Object.keys(item.pago).length > 0 && item.pago.estado !== "completado"
-      );
+    const formatData = casa.map((item) => {
+      return {
+        id: item?.id,
+        pago_id: item.id,
+        razon_social: "Cecomirl",
+        ruc: 20447645476,
+        // contrato_id: item?.contrato?.id,
+        pago: item,
+      };
+    });
 
     return res.status(200).json({ data: formatData });
   } catch (error) {
@@ -89,7 +72,6 @@ const createProgramacionCasa = async (req, res, next) => {
         .status(200)
         .json({ msg: "Programación registrada con éxito!", status: 200 });
     }
-
   } catch (error) {
     console.log(error);
     res.status(500).json({ msg: "No se pudo registrar.", status: 500 });
@@ -124,14 +106,13 @@ const postPagoCasa = async (req, res, next) => {
         status: 200,
       });
     }
-    next();
   } catch (error) {
     console.log(error);
     res.status(500).json({ msg: "No se pudo registrar.", status: 500 });
   }
 };
 
-// hacer el pago de multiples volquetes 
+// hacer el pago de multiples volquetes
 const postPagoCasaMultiple = async (req, res, next) => {
   try {
     if (req.body.volquetes >= 1) {
@@ -144,9 +125,7 @@ const postPagoCasaMultiple = async (req, res, next) => {
         };
       });
 
-      const dest = await destino_pago.bulkCreate(destinoCreate, {
-        ignoreDuplicates: false,
-      });
+      const dest = await destino_pago.bulkCreate(destinoCreate);
       const pagoEstado = {
         estado: "completado",
       };
@@ -164,15 +143,13 @@ const postPagoCasaMultiple = async (req, res, next) => {
         status: 400,
       });
     }
-
-    next();
   } catch (error) {
     console.log(error);
     res.status(500).json({ msg: "No se pudo registrar.", status: 500 });
   }
 };
 
-// actualizar la programacion 
+// actualizar la programacion
 const updateProgramacionCasa = async (req, res, next) => {
   let id = req.params.id;
   let info = {
@@ -198,8 +175,6 @@ const updateProgramacionCasa = async (req, res, next) => {
     return res
       .status(200)
       .json({ msg: "Programación actualizada con éxito!", status: 200 });
-
-    next();
   } catch (error) {
     console.log(error);
     res.status(500).json({ msg: "No se pudo actualizar.", status: 500 });
@@ -231,7 +206,6 @@ const deletePagoCasa = async (req, res, next) => {
         .status(200)
         .json({ msg: "Pago eliminado con éxito!", status: 200 });
     }
-    next();
   } catch (error) {
     console.log(error);
     res.status(500).json({ msg: "No se pudo eliminar.", status: 500 });

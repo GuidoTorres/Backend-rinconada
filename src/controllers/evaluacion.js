@@ -90,6 +90,7 @@ const getEvaluacionById = async (req, res, next) => {
               seguridad: data?.evaluacion?.seguridad,
               medio_ambiente: data?.evaluacion?.medio_ambiente,
               fiscalizador: data?.evaluacion?.fiscalizador,
+              supervisado_por: data?.evaluacion?.supervisado_por,
               fiscalizador_aprobado: data?.evaluacion?.fiscalizador_aprobado,
               topico_observacion: data?.evaluacion?.topico_observacion,
               control_observacion: data?.evaluacion?.control_observacion,
@@ -152,6 +153,7 @@ const postEvaluacion = async (req, res, next) => {
     area_id: req?.body?.area_id || null,
     puesto_id: req?.body?.puesto_id || null,
     campamento_id: req?.body?.campamento_id || null,
+    supervisado_por: req?.body?.supervisado_por || null
   };
 
   const t = await sequelize.transaction();

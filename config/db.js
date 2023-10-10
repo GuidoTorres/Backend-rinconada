@@ -211,6 +211,7 @@ const evaluacion = sequelize.define(
     puesto_id: DataTypes.INTEGER,
     campamento_id: DataTypes.INTEGER,
     suspendido: DataTypes.BOOLEAN,
+    supervisado_por: DataTypes.STRING,
     createdAt: DataTypes.DATE,
     updatedAt: DataTypes.DATE
   },
@@ -254,6 +255,7 @@ const contrato = sequelize.define(
     suspendido: DataTypes.BOOLEAN,
     fecha_fin_estimada: DataTypes.BOOLEAN,
     relevo: DataTypes.STRING,
+    monto: DataTypes.STRING,
     createdAt: DataTypes.DATE,
     updatedAt: DataTypes.DATE
   },
@@ -1507,6 +1509,8 @@ detalle_pago.belongsTo(trabajador_contrato, {foreignKey: 'trabajador_contrato_id
 
 asociacion.hasMany(detalle_pago, {foreignKey:"asociacion_id"})
 detalle_pago.belongsTo(asociacion, {foreignKey: "asociacion_id"})
+aprobacion_contrato_pago.belongsTo(asociacion, { foreignKey: 'asociacion_id', targetKey: 'id' });
+
 
 module.exports = {
   sequelize,

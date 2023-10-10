@@ -4,7 +4,7 @@ const checkAuditoria = require("../middleware/auditoria");
 const checkAuth = require("../middleware/auth");
 
 
-router.get("/",checkAuth, incentivo.getIncentivo)
+router.get("/", incentivo.getIncentivo)
 router.get("/trabajadores",checkAuth, incentivo.getTrabajadoresIncentivo)
 // router.post("/", incentivo.postIncentivo)
 // router.post("/multiple", incentivo.postIncentivoMultiple)

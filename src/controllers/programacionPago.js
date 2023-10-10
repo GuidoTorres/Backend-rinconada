@@ -39,16 +39,14 @@ const getAprobacion = async (req, res, next) => {
     const format = all
       .map((item, i) => {
         // Calcula el total de pagos
-        const pagosTotal =
-          item?.contrato?.trabajador_contratos[0]?.detalle_pagos
-            ?.filter((pago) => pago?.pago?.quincena == item.subarray_id)
-            ?.reduce(
-              (acc, pago) =>
-                acc +
-                (parseFloat(pago.volquetes) || 0) * 4 +
-                (parseFloat(pago.teletrans) || 0),
-              0
-            );
+        const pagosTotal = item?.contrato?.trabajador_contratos[0]?.detalle_pagos
+        ?.filter(pago => pago?.dataValues?.quincena == item.subarray_id)
+        ?.reduce((acc, detallePago) => {
+          
+          return acc +
+            (parseFloat(detallePago?.monto) || 0) 
+        }, 0);
+
         // Calcula el saldo final
         const saldoFinal = item.contrato.teletrans.at(-1).saldo - pagosTotal;
         if (saldoFinal <= 0) {

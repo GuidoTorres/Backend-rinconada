@@ -4,6 +4,7 @@ const checkAuditoria = require("../middleware/auditoria");
 const checkAuth = require("../middleware/auth");
 
 router.get("/", checkAuth, contrato.getContrato);
+router.get("/estadisticas", contrato.estadisticasContrato);
 router.get("/trabajador/evaluacion", contrato.getTrabajadorContratoEvaluacion);
 router.get("/asociacion/trabajador/:id", contrato.getHistorialContratoTrabajadores)
 router.get("/last", checkAuth, contrato.getLastId);

@@ -2,55 +2,45 @@ const {
   campamento,
   trabajador,
   contrato,
-  teletrans,
   pago,
-  contrato_pago,
   destino_pago,
   destino,
   trabajador_contrato,
   cargo,
-  asociacion,
-  contrato_pago_trabajador,
   area,
+  detalle_pago,
 } = require("../../config/db");
 const { Op } = require("sequelize");
 
 // mostrar lista de incentivos
 const getIncentivo = async (req, res, next) => {
   try {
-    const getPago = await pago.findAll({
+    const incentivos = await pago.findAll({
+      where: { tipo_pago: "incentivo", estado: "programado" },
       include: [
         {
-          model: contrato_pago,
-          attributes: { exclude: ["contrato_pago_id"] },
+          model: detalle_pago,
           include: [
             {
-              model: contrato_pago_trabajador,
+              model: trabajador_contrato,
+              attributes: ["id"],
               include: [
                 {
                   model: trabajador,
-                  attributes: { exclude: ["usuarioId", "trabajador_dni"] },
-
+                  attributes: [
+                    "dni",
+                    "nombre",
+                    "apellido_paterno",
+                    "apellido_materno",
+                    "telefono",
+                  ],
+                },
+                {
+                  model: contrato,
+                  attributes: ["id", "fecha_inicio", "fecha_fin"],
                   include: [
-                    {
-                      model: trabajador_contrato,
-                      include: [
-                        {
-                          model: contrato,
-                          attributes: { exclude: ["contrato_id"] },
-                          where: { finalizado: false },
-
-                          include: [
-                            { model: asociacion },
-                            { model: area },
-                            {
-                              model: cargo,
-                              attributes: { exclude: ["cargo_id"] },
-                            },
-                          ],
-                        },
-                      ],
-                    },
+                    { model: area, attributes: ["nombre"] },
+                    { model: cargo, attributes: ["nombre"] },
                   ],
                 },
               ],
@@ -60,64 +50,40 @@ const getIncentivo = async (req, res, next) => {
       ],
     });
 
-    const filterIncentivo = getPago.filter(
-      (item) => item?.tipo === "incentivo"
-    );
+    const formatData = incentivos.map((item, i) => {
+      return {
+        pago_id: item?.id,
+        volquetes: item?.volquetes,
+        teletrans: item?.teletrans,
+        observacion: item?.observacion,
+        fecha_pago: item?.fecha_pago,
+        estado: item?.estado,
+        tipo: item?.tipo_pago,
+        unidad_produccion: item?.unidad_produccion,
+        trabajadores: item.detalle_pagos.map((data) => {
+          const contrato = data?.trabajador_contrato?.contrato;
+          const trabajador = data?.trabajador_contrato?.trabajador;
 
-    const format = filterIncentivo
-      .map((item, i) => {
-        return {
-          pago_id: item?.id,
-          teletrans: item?.teletrans,
-          observacion: item?.observacion,
-          fecha_pago: item?.fecha_pago,
-          estado: item?.estado,
-          tipo: item?.tipo,
-          volquetes: item.volquetes,
-          trabajadores:
-            // nuevo: data?.contrato_pago_trabajadors.map((dat) => dat),
-            item?.contrato_pagos.flatMap((data) => {
-              return data?.contrato_pago_trabajadors?.map((dat) => {
-                return {
-                  contrato_id: data?.contrato_id,
-                  dni: dat?.trabajador?.dni,
-                  volquetes: dat?.volquetes,
-                  teletrans: dat?.teletrans,
-                  nombre:
-                    dat?.trabajador?.apellido_paterno +
-                    " " +
-                    dat?.trabajador?.apellido_materno +
-                    " " +
-                    dat?.trabajador?.nombre,
-                  telefono: dat?.trabajador?.telefono,
-                  area: dat?.trabajador?.trabajador_contratos
-                    ?.map((da) => da.contrato.area.nombre)
-                    .toString(),
-                  cargo:
-                    dat?.trabajador?.trabajador_contratos
-                      ?.map((da) => da?.contrato?.cargo?.nombre)
-                      .toString() !== ""
-                      ? dat?.trabajador?.trabajador_contratos
-                          ?.map((da) => da?.contrato?.cargo?.nombre)
-                          .toString()
-                      : dat?.trabajador?.trabajador_contratos
-                          ?.map((da) => da?.contrato?.asociacion?.tipo)
-                          .toString(),
-                };
-              });
-            }),
-        };
-      })
+          return {
+            contrato_id: contrato?.id,
+            dni: trabajador?.dni,
+            nombre:
+              trabajador?.apellido_paterno +
+              " " +
+              trabajador?.apellido_materno +
+              " " +
+              trabajador?.nombre,
+            telefono: trabajador?.telefono,
+            area: contrato?.area.nombre,
+            cargo: contrato?.cargo.nombre,
+            volquetes: 0,
+            teletrans: data?.monto,
+          };
+        }),
+      };
+    });
 
-      ?.filter((item) => item?.estado === "programado")
-      .map((item, i) => {
-        return {
-          id: i + 1,
-          ...item,
-        };
-      });
-
-    return res.status(200).json({ data: format });
+    return res.status(200).json({ data: formatData });
   } catch (error) {
     console.log(error);
     res.status(500).json();
@@ -164,6 +130,7 @@ const getTrabajadoresIncentivo = async (req, res, next) => {
             " " +
             item?.nombre,
           celular: item?.telefono,
+          trabajador_contrato_id: item.trabajador_contratos[0]?.id,
           contrato_id: item.trabajador_contratos
             .map((item) => item.contrato_id)
             .toString(),

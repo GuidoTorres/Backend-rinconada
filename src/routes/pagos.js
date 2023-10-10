@@ -4,7 +4,7 @@ const checkAuditoria = require("../middleware/auditoria");
 const checkAuth = require("../middleware/auth");
 
 router.get("/", pago.getPagoFecha);
-router.get("/historial",checkAuth, pago.historialProgramacion);
+router.get("/historial", pago.historialProgramacion);
 router.get("/fechas",checkAuth, pago.filtroPagoFecha);
 router.get("/individual/lista",checkAuth, pago.getListaPagoIndividual);
 router.get("/validacion/:id",checkAuth, pago.validacionPago);

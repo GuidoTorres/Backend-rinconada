@@ -12,6 +12,8 @@ const {
   suspensiones_jefes,
   trabajadorAsistencia,
   asistencia,
+  campamento,
+  area,
 } = require("../../config/db");
 const { Op } = require("sequelize");
 const dayjs = require("dayjs");
@@ -283,12 +285,15 @@ const postContratoAsociacion = async (req, res, next) => {
       const updatePromises = req.body.trabajadores.map(async (item) => {
         // Buscar el registro existente que coincida con trabajador_dni y evaluacion_id
         const existingRecord = await trabajador_contrato.findOne({
-          where: { trabajador_dni: item, estado: 'Activo' },
-          transaction
+          where: { trabajador_dni: item, estado: "Activo" },
+          transaction,
         });
         // Si se encuentra un registro existente, actualizarlo
         if (existingRecord) {
-          return existingRecord.update({ contrato_id: post.id }, { transaction });
+          return existingRecord.update(
+            { contrato_id: post.id },
+            { transaction }
+          );
         }
 
         return null;
@@ -429,7 +434,6 @@ const deleteContrato = async (req, res, next) => {
       .json({ msg: "No se pudo eliminar el contrato", status: 500 });
   }
 };
-
 //obtener el ultimo id de las lista de contratos
 const getLastId = async (req, res, next) => {
   try {
@@ -823,7 +827,198 @@ const getHistorialContratoTrabajadores = async (req, res) => {
     console.log(error);
     res.status(500).send({
       msg: "No se pudo obtener la lista de trabajadores.",
-      status: 500,
+    });
+  }
+};
+
+const estadisticasContrato = async (req, res) => {
+  try {
+    const { count, rows } = await trabajador_contrato.findAndCountAll({
+      where: { estado: "Activo", contrato_id: { [Op.not]: null } },
+      include: [
+        {
+          model: contrato,
+          attributes: [
+            "id",
+            "fecha_inicio",
+            "tipo_contrato",
+            "fecha_fin_estimada",
+            "fecha_fin",
+            "volquete",
+            "teletran",
+            "area_id",
+          ],
+          include: [
+            { model: campamento, attributes: ["id", "nombre"] },
+            { model: area, attributes: ["id", "nombre"] },
+            { model: teletrans },
+          ],
+        },
+      ],
+    });
+    const groupedData = rows.reduce(
+      (acc, curr) => {
+        const areaId = curr?.contrato?.area?.id || "Sin_ID_Area";
+        const areaName = curr?.contrato?.area?.nombre || "Sin Área";
+        const campamentoId =
+          curr?.contrato?.campamento?.id || "Sin_ID_Campamento";
+        const campamentoName =
+          curr?.contrato?.campamento?.nombre || "Sin Campamento";
+
+        let area = acc.formattedAreas.children.find(
+          (child) => child.id === areaId
+        );
+        if (!area) {
+          // Si no, agregar una nueva entrada para el área
+          area = { id: areaId, name: areaName, value: 0 };
+          acc.formattedAreas.children.push(area);
+        }
+
+        // Incrementar el contador de trabajadores para el área
+        area.value++;
+
+        // Acumula la cuenta de trabajadores por área
+        if (!acc.areas[areaId]) {
+          acc.areas[areaId] = { count: 1, name: areaName };
+        } else {
+          acc.areas[areaId].count++;
+        }
+
+        // Acumula la cuenta de trabajadores por campamento
+        if (!acc.campamentos[campamentoId]) {
+          acc.campamentos[campamentoId] = { count: 1, name: campamentoName };
+        } else {
+          acc.campamentos[campamentoId].count++;
+        }
+        const tipoContrato = curr?.contrato?.tipo_contrato || "Sin Tipo";
+
+        // Acumula la cuenta de trabajadores por tipo de contrato
+        if (!acc.tipoContrato[tipoContrato]) {
+          acc.tipoContrato[tipoContrato] = 1;
+        } else {
+          acc.tipoContrato[tipoContrato]++;
+        }
+
+        const contratoId = curr?.contrato?.id;
+        const teletransTotal =
+          parseFloat(curr?.contrato?.teletrans[0]?.total) || 0;
+
+        // Verificar si el contrato actual ya fue procesado
+        if (!acc.contratosProcesados.includes(contratoId)) {
+          acc.totalPagoTeletrans += teletransTotal;
+          acc.contratosProcesados.push(contratoId); // Marcar el contrato como procesado
+        }
+
+        return acc;
+      },
+      {
+        areas: {},
+        campamentos: {},
+        totalPagoTeletrans: 0,
+        tipoContrato: {},
+        contratosProcesados: [],
+        formattedAreas: { name: "root", children: [] },
+      }
+    );
+
+    const areaLabels = Object.values(groupedData.areas).map(
+      (area) => area.name
+    );
+    const areaData = Object.values(groupedData.areas).map((area) => area.count);
+
+    // Transformar la data agrupada para campamentos
+    const campamentoLabels = Object.values(groupedData.campamentos).map(
+      (campamento) => campamento.name
+    );
+    const campamentoData = Object.values(groupedData.campamentos).map(
+      (campamento) => campamento.count
+    );
+
+    const areaChartData = {
+      labels: areaLabels,
+      datasets: [
+        {
+          label: "Trabajadores",
+          data: areaData,
+          backgroundColor: "rgba(75, 192, 192, 0.2)",
+          borderColor: "rgba(75, 192, 192, 1)",
+          borderWidth: 1,
+        },
+      ],
+    };
+
+    const campamentoChartData = {
+      labels: campamentoLabels,
+      datasets: [
+        {
+          label: "Trabajadores",
+          data: campamentoData,
+          backgroundColor: [
+            "rgba(255, 0, 0, 0.2)", // Rojo
+            "rgba(0, 255, 0, 0.2)", // Verde
+            "rgba(0, 109, 255, 0.2)", // Azul
+            "rgba(255, 255, 0, 0.2)", // Amarillo
+            "rgba(135, 0, 255, 0.2)", // Magenta
+            "rgba(0, 255, 255, 0.2)", // Cian
+            "rgba(128, 0, 128, 0.2)", // Púrpura
+            "rgba(255, 165, 0, 0.2)", // Naranja
+          ],
+          borderColor: [
+            "rgba(255, 0, 0, 1)", // Rojo
+            "rgba(0, 255, 0, 1)", // Verde
+            "rgba(0, 109, 255, 1)", // Azul
+            "rgba(255, 255, 0, 1)", // Amarillo
+            "rgba(135, 0, 255, 1)", // Magenta
+            "rgba(0, 255, 255, 1)", // Cian
+            "rgba(128, 0, 128, 1)", // Púrpura
+            "rgba(255, 165, 0, 1)", // Naranja
+          ],
+
+          borderWidth: 1,
+        },
+      ],
+    };
+    const tipoContratoLabels = Object.keys(groupedData.tipoContrato);
+    const tipoContratoData = Object.values(groupedData.tipoContrato);
+
+    const tipoContratoChartData = {
+      labels: tipoContratoLabels,
+      datasets: [
+        {
+          label: "Trabajadores por Tipo de Contrato",
+          data: tipoContratoData,
+          backgroundColor: [
+            "rgba(0, 0, 255, 0.2)", // Azul
+            "rgba(255, 255, 0, 0.2)", // Amarillo
+            "rgba(128, 0, 128, 0.2)", // Púrpura
+          ],
+          borderColor: [
+            "rgba(0, 0, 255, 1)", // Azul
+            "rgba(255, 255, 0, 1)", // Amarillo
+            "rgba(128, 0, 128, 1)", // Púrpura
+          ],
+          borderWidth: 1,
+        },
+      ],
+    };
+    const totalPago = groupedData.totalPagoTeletrans;
+    const volquetes = Math.floor(totalPago / 4);
+    const tele = totalPago % 4;
+    const prueba = {
+      total: count,
+      areaChartData,
+      treeData: groupedData.formattedAreas,
+      campamentoChartData,
+      tipoContratoChartData,
+      volquetes,
+      tele,
+    };
+
+    res.status(200).json({ data: prueba });
+  } catch (error) {
+    console.log(error);
+    res.status(500).send({
+      msg: "No se pudo obtener las estadísticas.",
     });
   }
 };
@@ -842,4 +1037,5 @@ module.exports = {
   updateAllContratos,
   registrarSuspension,
   getHistorialContratoTrabajadores,
+  estadisticasContrato,
 };
