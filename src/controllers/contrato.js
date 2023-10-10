@@ -847,6 +847,7 @@ const estadisticasContrato = async (req, res) => {
             "volquete",
             "teletran",
             "area_id",
+            "asociacion_id",
           ],
           include: [
             { model: campamento, attributes: ["id", "nombre"] },
@@ -908,7 +909,12 @@ const estadisticasContrato = async (req, res) => {
           acc.totalPagoTeletrans += teletransTotal;
           acc.contratosProcesados.push(contratoId); // Marcar el contrato como procesado
         }
-
+        
+        if (curr?.contrato?.asociacion_id) {
+          acc.trabajadoresAsociacion++;
+        } else {
+          acc.trabajadoresIndividuales++;
+        }
         return acc;
       },
       {
@@ -918,6 +924,8 @@ const estadisticasContrato = async (req, res) => {
         tipoContrato: {},
         contratosProcesados: [],
         formattedAreas: { name: "root", children: [] },
+        trabajadoresAsociacion: 0,
+        trabajadoresIndividuales: 0,
       }
     );
 
@@ -1012,6 +1020,8 @@ const estadisticasContrato = async (req, res) => {
       tipoContratoChartData,
       volquetes,
       tele,
+      trabajadoresAsociacion: groupedData.trabajadoresAsociacion, // <-- Añadir este
+      trabajadoresIndividuales: groupedData.trabajadoresIndividuales,
     };
 
     res.status(200).json({ data: prueba });

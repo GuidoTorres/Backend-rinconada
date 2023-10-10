@@ -371,7 +371,7 @@ const crearTareoIndividual = async () => {
         }
       }
     });
-    // await guardarAprobacion(aprobacionFilter)
+    await guardarAprobacion(aprobacionFilter)
   } catch (error) {
     console.log(error);
   }

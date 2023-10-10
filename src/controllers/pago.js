@@ -465,7 +465,6 @@ const historialProgramacion = async (req, res, next) => {
     const formatAsociacion = historialPago
       ?.filter((item) => item.tipo_pago === "asociacion")
       ?.map((item) => {
-        const detalle_pago = item?.detalle_pagos;
         return {
           observacion: item?.observacion,
           fecha_pago: item.fecha_pago,
@@ -477,7 +476,8 @@ const historialProgramacion = async (req, res, next) => {
           quincena: item?.quincena,
           unidad_produccion: item?.unidad_produccion,
           pago_id: item.id,
-          pagos: detalle_pago.map((data) => {
+
+          pagos: item?.detalle_pagos.map((data) => {
             const aprobacion =
               data?.trabajador_contrato?.contrato?.aprobacion_contrato_pagos?.find(
                 (ele) => parseInt(ele.subarray_id) === parseInt(data.quincena)
@@ -520,24 +520,24 @@ const historialProgramacion = async (req, res, next) => {
     const formatPagoIndividual = historialPago
       ?.filter((item) => item.tipo_pago === "individual")
       ?.map((item) => {
+        const quincena = item?.detalle_pagos?.map((data) => data.quincena);
         const contrato = item?.detalle_pagos.map(
           (data) => data?.trabajador_contrato?.contrato
         )[0];
         const trabajadorData = item?.detalle_pagos.map(
           (data) => data?.trabajador_contrato?.trabajador
         )[0];
-        const aprobacion =
-          item?.detalle_pagos?.trabajador_contrato?.contrato?.aprobacion_contrato_pagos?.find(
-            (ele) => parseInt(ele.subarray_id) === parseInt(item.quincena)
-          );
+        const aprobacion = contrato?.aprobacion_contrato_pagos?.find(
+          (ele) => parseInt(ele.subarray_id) === parseInt(quincena)
+        );
         const trabajador = {
           contrato_id: contrato?.contrato?.id,
           fecha_quincena:
             aprobacion?.fecha_inicio + " al " + aprobacion?.fecha_fin,
           quincena: aprobacion?.subarray_id,
           dni: trabajadorData?.dni,
-          volquetes: item?.volquetes,
-          teletrans: item?.teletrans,
+          volquetes: item?.volquetes || 0,
+          teletrans: item?.teletrans || 0,
           nombre:
             trabajadorData?.apellido_paterno +
             " " +
@@ -553,12 +553,12 @@ const historialProgramacion = async (req, res, next) => {
           fecha_pago: item.fecha_pago,
           tipo_pago: item?.tipo_pago,
           estado: item?.estado,
-          volquetes: item?.volquetes,
-          teletrans: item?.teletrans,
+          volquetes: item?.monto % 4 === 0 ? item?.monto / 4 : 0,
+          teletrans: item?.monto % 4 === 0 ? 0 : item?.monto,
           quincena: item?.quincena,
           unidad_produccion: item?.unidad_produccion,
           pago_id: item.id,
-          pagos: trabajador,
+          pagos: [trabajador],
           destino: item?.destino_pagos,
         };
       });
@@ -572,18 +572,17 @@ const historialProgramacion = async (req, res, next) => {
         const trabajadorData = item?.detalle_pagos.map(
           (data) => data?.trabajador_contrato?.trabajador
         )[0];
-        const aprobacion =
-          item?.detalle_pagos?.trabajador_contrato?.contrato?.aprobacion_contrato_pagos?.find(
-            (ele) => parseInt(ele.subarray_id) === parseInt(item.quincena)
-          );
+        const aprobacion = contrato?.aprobacion_contrato_pagos?.find(
+          (ele) => parseInt(ele.subarray_id) === parseInt(quincena)
+        );
         const trabajador = {
           contrato_id: contrato?.contrato?.id,
           fecha_quincena:
             aprobacion?.fecha_inicio + " al " + aprobacion?.fecha_fin,
           quincena: aprobacion?.subarray_id,
           dni: trabajadorData?.dni,
-          volquetes: item?.volquetes,
-          teletrans: item?.teletrans,
+          volquetes: item?.volquetes || 0,
+          teletrans: item?.teletrans || 0,
           nombre:
             trabajadorData?.apellido_paterno +
             " " +
@@ -599,12 +598,12 @@ const historialProgramacion = async (req, res, next) => {
           fecha_pago: item.fecha_pago,
           tipo_pago: item?.tipo_pago,
           estado: item?.estado,
-          volquetes: item?.volquetes,
-          teletrans: item?.teletrans,
+          volquetes: item?.monto % 4 === 0 ? item?.monto / 4 : 0,
+          teletrans: item?.monto % 4 === 0 ? 0 : item?.monto,
           quincena: item?.quincena,
           unidad_produccion: item?.unidad_produccion,
           pago_id: item.id,
-          pagos: trabajador,
+          pagos: [trabajador],
           destino: item?.destino_pagos,
         };
       });
@@ -631,213 +630,10 @@ const historialProgramacion = async (req, res, next) => {
           quincena: item?.quincena,
           unidad_produccion: item?.unidad_produccion,
           pago_id: item.id,
-          pagos: trabajador,
+          pagos: [trabajador],
           destino: item?.destino_pagos,
         };
       });
-
-    // const formatAsociacion = getPago
-    //   .map((item) => {
-    //     return {
-    //       observacion: item?.observacion,
-    //       fecha_pago: item?.fecha_pago,
-    //       tipo: item?.tipo,
-    //       estado: item?.estado,
-    //       volquetes: item?.volquetes,
-    //       teletrans: item?.teletrans,
-    //       destino: item?.destino_pagos,
-    //       quincena: item?.quincena,
-    //       unidad_produccion: item?.unidad_produccion,
-    //       pago_id: item.contrato_pagos.map((data) => data.pago_id).toString(),
-    //       pagos: item?.contrato_pagos
-    //         ?.map((data) => {
-    //           const aprobacionData =
-    //             data?.contrato?.aprobacion_contrato_pagos.find(
-    //               (ele) => ele?.subarray_id == data?.quincena
-    //             );
-    //           const asociacion = getAsociacion?.find(
-    //             (ele) => ele?.id == aprobacionData?.asociacion_id
-    //           );
-    //           return {
-    //             contrato_id: data?.contrato_id,
-    //             pago_id: data?.pago_id,
-    //             asociacion_id: asociacion?.id,
-    //             nombre: asociacion?.nombre,
-    //             tipo_asociacion: asociacion?.tipo,
-    //             area: "---",
-    //             cargo: "---",
-    //             celular: "---",
-    //             dni: "---",
-    //             trabajadores: data?.pago_asociacions.map((dat) => {
-    //               return {
-    //                 fecha_quincena:
-    //                   aprobacionData?.fecha_inicio +
-    //                   " al " +
-    //                   aprobacionData?.fecha_fin,
-    //                 contrato_id: data?.contrato_id,
-    //                 volquetes: dat?.volquetes,
-    //                 teletrans: dat?.teletrans,
-    //                 dni: dat?.trabajador?.dni,
-    //                 telefono: dat?.trabajador?.telefono,
-    //                 nombre:
-    //                   dat?.trabajador?.apellido_paterno +
-    //                   " " +
-    //                   dat?.trabajador?.apellido_paterno +
-    //                   " " +
-    //                   dat?.trabajador?.apellido_materno,
-    //               };
-    //             }),
-    //           };
-    //         })
-    //         .at(-1),
-    //     };
-    //   })
-    //   .filter((item) => item.tipo === "asociacion");
-
-    // const formatPagoNormal = getPago
-    //   .filter(
-    //     (item) =>
-    //       item?.contrato_pagos?.at(-1)?.pago_asociacions?.length === 0 &&
-    //       item.contrato_pagos.length > 0
-    //   )
-    //   .map((item) => {
-    //     const trabajadores = item?.contrato_pagos?.flatMap((data) => {
-    //       const aprobaciones =
-    //         data?.contrato?.aprobacion_contrato_pagos?.filter(
-    //           (aprobacion) =>
-    //             aprobacion?.contrato_id === data?.contrato_id &&
-    //             aprobacion?.subarray_id === data?.quincena
-    //         );
-
-    //       return aprobaciones.flatMap((aprobacionData) =>
-    //         data?.contrato_pago_trabajadors?.map((dat) => {
-    //           const cargos = dat?.trabajador?.trabajador_contratos?.filter(
-    //             (ele) => data?.contrato_id == aprobacionData?.contrato_id
-    //           );
-    //           return {
-    //             contrato_id: data?.contrato_id,
-    //             fecha_quincena:
-    //               aprobacionData?.fecha_inicio +
-    //               " al " +
-    //               aprobacionData?.fecha_fin,
-    //             quincena: aprobacionData?.subarray_id,
-    //             dni: dat?.trabajador?.dni,
-    //             volquetes: dat?.volquetes,
-    //             teletrans: dat?.teletrans,
-    //             nombre:
-    //               dat?.trabajador?.apellido_paterno +
-    //               " " +
-    //               dat?.trabajador?.apellido_materno +
-    //               " " +
-    //               dat?.trabajador?.nombre,
-    //             telefono: dat?.trabajador?.telefono,
-    //             area: cargos?.contrato?.area?.nombre,
-    //             cargo: cargos?.contrato?.cargo?.nombre,
-    //           };
-    //         })
-    //       );
-    //     });
-
-    //     return {
-    //       pago_id: item?.id,
-    //       teletrans: item?.teletrans,
-    //       observacion: item?.observacion,
-    //       fecha_pago: item?.fecha_pago,
-    //       estado: item?.estado,
-    //       tipo: item?.tipo,
-    //       destino: item?.destino_pagos,
-    //       volquetes: item.volquetes,
-    //       unidad_produccion: item?.unidad_produccion,
-    //       pagos: {
-    //         trabajadores,
-    //       },
-    //     };
-    //   })
-    //   .filter((item) => item.tipo === "pago");
-
-    // const formatPagoIncentivo = getPago
-    //   .filter(
-    //     (item) =>
-    //       item?.contrato_pagos?.at(-1)?.pago_asociacions?.length === 0 &&
-    //       item.contrato_pagos.length > 0
-    //   )
-    //   .map((item) => {
-    //     return {
-    //       pago_id: item?.id,
-    //       teletrans: item?.teletrans,
-    //       observacion: item?.observacion,
-    //       fecha_pago: item?.fecha_pago,
-    //       estado: item?.estado,
-    //       tipo: item?.tipo,
-    //       destino: item?.destino_pagos,
-    //       volquetes: item.volquetes,
-    //       unidad_produccion: item?.unidad_produccion,
-
-    //       pagos: {
-    //         trabajadores: item?.contrato_pagos.flatMap((data) => {
-    //           return data?.contrato_pago_trabajadors?.map((dat) => {
-    //             const cargos = dat?.trabajador?.trabajador_contratos.find(
-    //               (ele) => ele.contrato_id == data.contrato_id
-    //             );
-    //             return {
-    //               contrato_id: data?.contrato_id,
-    //               dni: dat?.trabajador?.dni,
-    //               volquetes: dat?.volquetes,
-    //               teletrans: dat?.teletrans,
-    //               nombre:
-    //                 dat?.trabajador?.apellido_paterno +
-    //                 " " +
-    //                 dat?.trabajador?.apellido_materno +
-    //                 " " +
-    //                 dat?.trabajador?.nombre,
-    //               telefono: dat?.trabajador?.telefono,
-    //               area: cargos?.contrato?.area?.nombre,
-    //               cargo: cargos?.contrato?.cargo?.nombre,
-    //             };
-    //           });
-    //         }),
-    //       },
-    //     };
-    //   })
-    //   .filter((item) => item.tipo === "incentivo");
-
-    // const formatPagoCasa = getPago
-    //   .filter(
-    //     (item) =>
-    //       item?.contrato_pagos?.at(-1)?.pago_asociacions?.length === 0 &&
-    //       item.contrato_pagos.length > 0
-    //   )
-    //   .map((item) => {
-    //     return {
-    //       pago_id: item?.id,
-    //       teletrans: item?.teletrans,
-    //       observacion: item?.observacion,
-    //       fecha_pago: item?.fecha_pago,
-    //       estado: item?.estado,
-    //       tipo: item?.tipo,
-    //       destino: item?.destino_pagos,
-    //       unidad_produccion: item?.unidad_produccion,
-
-    //       volquetes: item.volquetes,
-    //       pagos: item?.contrato_pagos
-    //         .map((data) => {
-    //           return {
-    //             trabajadores: [
-    //               {
-    //                 contrato_id: data?.contrato_id,
-    //                 dni: "-----",
-    //                 volquetes: data?.volquetes,
-    //                 teletrans: data?.teletrans,
-    //                 nombre: data?.contrato?.empresa?.razon_social,
-    //                 ruc: data?.contrato?.empresa?.ruc,
-    //               },
-    //             ],
-    //           };
-    //         })
-    //         .at(-1),
-    //     };
-    //   })
-    //   .filter((item) => item.tipo === "casa");
 
     const concatData = formatAsociacion
       .concat(formatPagoIndividual)
