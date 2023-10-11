@@ -763,75 +763,81 @@ const getTareoTrabajador = async (req, res, next) => {
             }
           }
         }
-      } else if (tareo === "Mes cerrado") {
+      } if (tareo === "Mes cerrado") {
         const fechaInicioDay = trabajadorContrato?.contrato?.fecha_inicio;
         const asistencias = trabajadorContrato?.trabajador_asistencia || [];
         const sortedAsistencias = [...asistencias].sort((a, b) =>
-          a.asistencium.fecha.localeCompare(b.asistencium.fecha)
+            a.asistencium.fecha.localeCompare(b.asistencium.fecha)
         );
-
+    
         const getAsistenciaForDay = (fecha) => {
-          const asistencia = sortedAsistencias.find((data) =>
-            dayjs(data?.asistencium?.fecha).isSame(fecha)
+          return sortedAsistencias.find((data) =>
+              dayjs(data?.asistencium?.fecha).isSame(fecha)
           );
-          return (
-            asistencia || {
-              asistencium: { fecha, asistencia: "Sin asistencia" },
-            }
-          );
-        };
-
-        const fechaInicio = dayjs(fechaInicioDay);
+      };
+      
+    
+        let currentDate = dayjs(fechaInicioDay);
         const fechaDeUltimaAsistencia = dayjs(
-          sortedAsistencias[sortedAsistencias.length - 1]?.asistencium?.fecha
+            sortedAsistencias[sortedAsistencias.length - 1]?.asistencium?.fecha
         );
-
+    
         let subAsistencias = [];
-        let currentDate = fechaInicio;
+        let subarrayCount = 0;
+        let lastSubarrayLength = 0; // Guardamos la longitud del último subarray
+
 
         while (!currentDate.isAfter(fechaDeUltimaAsistencia)) {
-          const currentAsistencia = getAsistenciaForDay(
-            currentDate.format("YYYY-MM-DD")
-          );
-          subAsistencias.push(currentAsistencia);
-
-          const daysInMonth = currentDate.daysInMonth();
-          let splitDay;
-
-          if (daysInMonth === 31) {
-            splitDay = 16;
-          } else if (daysInMonth === 30 || daysInMonth === 29) {
-            splitDay = 15;
-          } else {
-            splitDay = 15;
+          subarrayCount++;
+      
+          let daysForThisSubarray;
+          console.log(lastSubarrayLength);
+          if (subarrayCount % 2 === 1) { // Subarray impar
+            daysForThisSubarray = (currentDate.daysInMonth() === 31) ? 16 : 15;
+            lastSubarrayLength = daysForThisSubarray;
+        } else { // Subarray par
+          switch(currentDate.daysInMonth()) {
+            case 31:
+                daysForThisSubarray = 15;
+                break;
+            case 30:
+                daysForThisSubarray = 15;
+                break;
+            case 29:
+                daysForThisSubarray = 14;
+                break;
+            case 28:
+                daysForThisSubarray = 13;
+                break;
+        }
+        }
+        
+        
+      
+          for (let i = 0; i < daysForThisSubarray; i++) {
+              const currentAsistencia = getAsistenciaForDay(currentDate.format("YYYY-MM-DD"));
+              if (currentAsistencia) {
+                  subAsistencias.push(currentAsistencia);
+              }
+              currentDate = currentDate.add(1, "day");
           }
-
-          // Si es el último día del mes, el día de la última asistencia, o se ha alcanzado el splitDay
-          if (
-            currentDate.date() === currentDate.daysInMonth() ||
-            currentDate.isSame(fechaDeUltimaAsistencia) ||
-            subAsistencias.length === splitDay
-          ) {
-            createSubarray(
+      
+          createSubarray(
               trabajador,
               subAsistencias,
               subAsistencias[0].asistencium.fecha,
-              currentAsistencia.asistencium.fecha,
+              subAsistencias[subAsistencias.length - 1].asistencium.fecha,
               subAsistencias.length,
               subarrayId,
               aprobacionFilter
-            );
-            subAsistencias = [];
-
-            // Ajusta splitDay para la segunda mitad del mes si es necesario
-            if (currentDate.date() === splitDay) {
-              splitDay = daysInMonth - splitDay;
-            }
-          }
-
-          currentDate = currentDate.add(1, "day");
-        }
-      } else if (tareo === "20 dias") {
+          );
+      
+          subAsistencias = [];
+      }
+      
+    }
+    
+     else if (tareo === "20 dias") {
         const minAsistencias = 20;
         let contador = 0;
         let subAsistencias = [];
@@ -922,6 +928,8 @@ const createSubarray = (
   const fechaFinDayjs = dayjs(fechaFin);
   let asistenciasValidas = 0;
 
+  console.log(fechaInicio);
+  console.log(fechaFin);
   const asistenciasEnRango =
     trabajador?.trabajador_contratos[0]?.trabajador_asistencia?.filter(
       (asistencia) => {

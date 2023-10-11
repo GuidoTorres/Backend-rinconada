@@ -95,7 +95,6 @@ const crearTareoAsociacion = async () => {
         let currentDate = inicio;
         let indexAsistencia = 0;
 
-
         // Identificar el trabajador_contrato con el trabajador de menor código
         const trabajadorContratoMenorCodigo =
           contrato?.trabajador_contratos.reduce((prev, curr) =>
@@ -151,9 +150,8 @@ const crearTareoAsociacion = async () => {
         }
         return subarrays;
       })
-      .flat()
-      await guardarAprobacion(formatData)
-
+      .flat();
+    await guardarAprobacion(formatData);
   } catch (error) {
     console.log(error);
   }
@@ -371,29 +369,31 @@ const crearTareoIndividual = async () => {
         }
       }
     });
-    await guardarAprobacion(aprobacionFilter)
+    await guardarAprobacion(aprobacionFilter);
   } catch (error) {
     console.log(error);
   }
 };
 async function guardarAprobacion(aprobaciones) {
-  const subarrayIds = aprobaciones.map(a => a.subarray_id);
-  const contratoIds = aprobaciones.map(a => a.contrato_id);
+  const subarrayIds = aprobaciones.map((a) => a.subarray_id);
+  const contratoIds = aprobaciones.map((a) => a.contrato_id);
 
   // Buscando registros existentes
   const existingRecords = await aprobacion_contrato_pago.findAll({
     where: {
       subarray_id: { [Op.in]: subarrayIds },
-      contrato_id: { [Op.in]: contratoIds }
-  }
+      contrato_id: { [Op.in]: contratoIds },
+    },
   });
   // Creando un conjunto con registros existentes para rápido acceso
   const existingSet = new Set();
-  existingRecords.forEach(record => {
-    existingSet.add(`${record.subarray_id.toString()}-${record.contrato_id.toString()}`);
+  existingRecords.forEach((record) => {
+    existingSet.add(
+      `${record.subarray_id.toString()}-${record.contrato_id.toString()}`
+    );
   });
   // Filtrando aprobaciones no existentes
-  const aprobacionesNoExistentes = aprobaciones.filter(aprobacion => {
+  const aprobacionesNoExistentes = aprobaciones.filter((aprobacion) => {
     const key = `${aprobacion.subarray_id.toString()}-${aprobacion.contrato_id.toString()}`;
     return !existingSet.has(key);
   });
