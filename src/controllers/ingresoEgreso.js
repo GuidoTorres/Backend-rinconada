@@ -589,7 +589,6 @@ const reporteIngreso = async (req, res, next) => {
 
     const concat = { labels: labels, ingresos: ingresos, egresos: egresos };
     return res.status(200).json({ data: concat });
-    next();
   } catch (error) {
     res.status(500).json(error);
   }
@@ -597,6 +596,16 @@ const reporteIngreso = async (req, res, next) => {
 // descargar excel de ingresos y egresos
 const convertJsonToExcel = async (req, res, next) => {
   let id = req.params.id
+  let queryConditions = {
+    sucursal_id: id,
+    fecha: {
+      [Op.lte]: req.query.fecha_fin
+    }
+  };
+  
+  if (req.query.movimiento) {
+    queryConditions.movimiento = req.query.movimiento;
+  }
   try{
   let saldoInicial = await saldo.findOne({
     where: { sucursal_id: id },
@@ -609,12 +618,7 @@ const convertJsonToExcel = async (req, res, next) => {
   saldoInicial = parseFloat(saldoInicial.saldo_inicial); 
   
   const transacciones = await ingresos_egresos.findAll({
-    where: {
-      sucursal_id: id,
-      fecha: {
-        [Op.lte]: req.query.fecha_fin,
-      },
-    },
+    where: queryConditions,
     include: [{ model: sucursal }],
     order: [["fecha", "ASC"]],
   });
@@ -679,15 +683,35 @@ const convertJsonToExcel = async (req, res, next) => {
     ];
 
     const workBook = XLSX.utils.book_new();
+    const columnWidths = [
+      { wch: 10 }, // "FECHA"
+      { wch:20 }, // "COMPROBANTE"
+      { wch: 15},
+      { wch: 40 },
+      { wch: 80 },
+      { wch: 20 },
+      { wch: 10 },
+      { wch: 20 },
+      { wch: 40 },
+      { wch: 60 },
+      { wch: 40 },
+      { wch: 20 },
+      { wch: 40 },
+      { wch: 10 },
+      { wch: 15 },
+      { wch: 15 },
+  ];
 
     //Consejo administracion
     const workSheetData1 = [workSheetColumnsName, ...allMovimientos];
     const workSheet1 = XLSX.utils.aoa_to_sheet(workSheetData1);
+    workSheet1['!cols'] = columnWidths;
     XLSX.utils.book_append_sheet(
       workBook,
       workSheet1,
       "Reporte de movimientos"
     );
+
 
     // Usar writeBuffer en lugar de writeFile
     const buffer = XLSX.write(workBook, { bookType: "xlsx", type: "buffer" });
@@ -699,7 +723,6 @@ const convertJsonToExcel = async (req, res, next) => {
     );
     res.setHeader("Content-Disposition", "attachment; filename=reporte.xlsx");
     return res.send(buffer);
-    return
   } catch (error) {
     console.log(error);
     res.status(500).json(error);

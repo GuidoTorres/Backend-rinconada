@@ -909,7 +909,7 @@ const estadisticasContrato = async (req, res) => {
           acc.totalPagoTeletrans += teletransTotal;
           acc.contratosProcesados.push(contratoId); // Marcar el contrato como procesado
         }
-        
+
         if (curr?.contrato?.asociacion_id) {
           acc.trabajadoresAsociacion++;
         } else {
@@ -1012,6 +1012,16 @@ const estadisticasContrato = async (req, res) => {
     const totalPago = groupedData.totalPagoTeletrans;
     const volquetes = Math.floor(totalPago / 4);
     const tele = totalPago % 4;
+
+    const fechaInicio = req.query.fechaInicio;
+    const fechaFin = req.query.fechaFin;
+
+    // 1. Llama a estadisticasPorFecha
+    const trabajadoresFechaChartData = await estadisticasPorFecha(
+      fechaInicio,
+      fechaFin
+    );
+
     const prueba = {
       total: count,
       areaChartData,
@@ -1022,6 +1032,7 @@ const estadisticasContrato = async (req, res) => {
       tele,
       trabajadoresAsociacion: groupedData.trabajadoresAsociacion, // <-- Añadir este
       trabajadoresIndividuales: groupedData.trabajadoresIndividuales,
+      trabajadoresFechaChartData: trabajadoresFechaChartData,
     };
 
     res.status(200).json({ data: prueba });
@@ -1030,6 +1041,71 @@ const estadisticasContrato = async (req, res) => {
     res.status(500).send({
       msg: "No se pudo obtener las estadísticas.",
     });
+  }
+};
+
+const estadisticasPorFecha = async (fechaInicio, fechaFin) => {
+  try {
+    console.log(fechaInicio);
+    const trabajadores = await trabajador_contrato.findAll({
+      where: { contrato_id: { [Op.not]: null } },
+      include: [
+        {
+          model: contrato,
+          attributes: ["id", "fecha_inicio", "fecha_fin", "asociacion_id"],
+          where: {
+            fecha_inicio: {
+              [Op.gte]: fechaInicio
+            },
+            fecha_fin: {
+              [Op.lte]: fechaFin
+            }
+          },
+        },
+      ],
+    });
+
+    console.log(trabajadores.length);
+    let trabajadoresAsociacionPorFecha = 0;
+    let trabajadoresIndividualesPorFecha = 0;
+
+    trabajadores.forEach((trabajador) => {
+      if (trabajador.contrato.asociacion_id) {
+        trabajadoresAsociacionPorFecha++;
+      } else {
+        trabajadoresIndividualesPorFecha++;
+      }
+    });
+
+    const labels = ["Asociación", "Individuales"];
+    const data = [
+      trabajadoresAsociacionPorFecha,
+      trabajadoresIndividualesPorFecha,
+    ];
+
+    const trabajadoresPorFechaChartData = {
+      labels: labels,
+      datasets: [
+        {
+          label: "Trabajadores por fecha",
+          data: data,
+          backgroundColor: [
+            "rgba(75, 192, 192, 0.2)", // Color para Asociación
+            "rgba(255, 99, 132, 0.2)", // Color para Individuales
+          ],
+          borderColor: [
+            "rgba(75, 192, 192, 1)", // Color borde para Asociación
+            "rgba(255, 99, 132, 1)", // Color borde para Individuales
+          ],
+          borderWidth: 1,
+        },
+      ],
+    };
+
+    return trabajadoresPorFechaChartData;
+  } catch (error) {
+    console.log(error);
+    throw new Error("Error al obtener las estadísticas por fecha.");
   }
 };
 

@@ -721,6 +721,40 @@ const getListaTrabajadoreSelect = async (req, res) => {
   }
 };
 
+const estadisticasTrabajador = async (req, res) => {
+  try {
+    const estadisticasContratos = await trabajador_contrato.findAll({
+      where: { estado: "Activo", contrato_id: { [Op.not]: null } },
+      include: [
+        {
+          model: contrato,
+          attributes: [
+            "id",
+            "fecha_inicio",
+            "tipo_contrato",
+            "fecha_fin_estimada",
+            "fecha_fin",
+            "volquete",
+            "teletran",
+            "area_id",
+            "asociacion_id",
+          ],
+        },
+        { model: evaluacion },
+      ],
+    });
+    const estadisticasEvaluaciones = await trabajador_contrato.findAll({
+      where: { estado: "Activo", contrato_id: null },
+      include: [
+        { model: evaluacion },
+      ],
+    });
+  } catch (error) {
+    console.log(error);
+    return res.status(500).json({ msg: "Error interno del servidor." });
+  }
+};
+
 module.exports = {
   getTrabajador,
   postTrabajador,
@@ -733,5 +767,5 @@ module.exports = {
   getTrabajarById,
   getTrabajadorConContrato,
   getContratoSuspendidoById,
-  getListaTrabajadoreSelect
+  getListaTrabajadoreSelect,
 };

@@ -64,7 +64,7 @@ const getRequerimiento = async (req, res, next) => {
           firma_gerente: item?.firma_gerente,
           firma_superintendente: item?.firma_superintendente,
           jefe: item.jefe,
-          gerente: item.gerente
+          gerente: item.gerente, observacion: item.observacion
         };
       })
       .sort((a, b) => {
@@ -97,7 +97,8 @@ const postARequerimiento = async (req, res, next) => {
       completado: "Pendiente",
       estado: "Pendiente",
       jefe: usuarios[0].nombre,
-      gerente: usuarios[1].nombre
+      gerente: usuarios[1].nombre,
+      observacion: req.body.observacion
     };
     const post = await requerimiento.create(data);
 
@@ -172,6 +173,7 @@ const updateRequerimientoProducto = async (req, res, next) => {
     area: req.body.area,
     celular: req.body.celular,
     proyecto: req.body.proyecto,
+    observacion:req.body.observacion
   };
   try {
     let update = await requerimiento.update(data, {
@@ -223,7 +225,6 @@ const deleteRequerimiento = async (req, res, next) => {
         .status(500)
         .json({ msg: "No se puede eliminar el requerimiento.", status: 500 });
     }
-    next();
   } catch (error) {
     res.status(500).json({ msg: "No se pudo eliminar.", status: 500 });
   }

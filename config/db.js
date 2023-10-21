@@ -733,6 +733,7 @@ const requerimiento = sequelize.define(
     firma_superintendente: DataTypes.STRING,
     jefe: DataTypes.STRING,
     gerente: DataTypes.STRING,
+    observacion: DataTypes.STRING
   },
   {
     tableName: "requerimiento",

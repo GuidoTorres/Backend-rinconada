@@ -497,6 +497,7 @@ const asociacionData = async () => {
                     "apellido_paterno",
                     "apellido_materno",
                     "nombre",
+                    "asociacion_id",
                   ],
                 },
                 {
@@ -765,11 +766,15 @@ const asociacionFinalizarContratos = async (
       );
       // Desligar trabajadores de la asociación y finalizar evaluaciones
       for (const trabajador of trabajadores) {
+        console.log(trabajador);
         finalizarPromises.push(trabajador.update({ asociacion_id: null }));
 
         // Ahora puedes iterar sobre evaluacionesActivas y finalizarlas
         for (const evaluacion of evaluaciones) {
-          finalizarPromises.push(evaluacion.update({ finalizado: true }));
+          if(evaluacion){
+
+            finalizarPromises.push(evaluacion.update({ finalizado: true }));
+          }
         }
         for (const trabajadorContrato of trabajadorContratos) {
           finalizarPromises.push(
