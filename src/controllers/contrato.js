@@ -627,7 +627,7 @@ const registrarSuspension = async (req, res) => {
         },
         {
           model: contrato,
-          attributes: ["id", "fecha_fin", "volquete", "teletran"],
+          attributes: ["id","fecha_inicio", "fecha_fin", "volquete", "teletran"],
           include: [
             {
               model: aprobacion_contrato_pago,
@@ -653,14 +653,15 @@ const registrarSuspension = async (req, res) => {
       traba_contrato?.contrato?.aprobacion_contrato_pagos.at(-1);
     let fechaIni;
     if (ultimoTareo) {
-      const fechaString = ultimoTareo.fecha_fin;
+      const fechaString = ultimoTareo?.fecha_fin;
       const partes = fechaString.split("-");
       const fechaReformateada = `${partes[2]}-${partes[1]}-${partes[0]}`;
       const fechaObjeto = new Date(fechaReformateada);
       fechaIni = dayjs(fechaObjeto);
     } else {
-      const fechaString1 = traba_contrato.contrato.fecha_inicio;
-      const partes1 = fechaString1.split("-");
+      const fechaString1 = traba_contrato?.contrato?.fecha_inicio;
+      console.log(traba_contrato?.contrato?.fecha_inicio);
+      const partes1 = fechaString1?.split("-");
       const fechaReformateada1 = `${partes1[2]}-${partes1[1]}-${partes1[0]}`;
       const fechaObjeto1 = new Date(fechaReformateada1);
       fechaIni = dayjs(fechaObjeto1);

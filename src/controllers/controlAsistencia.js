@@ -424,6 +424,24 @@ const ordenarAsistencia = (inicio, fin, asistencias) => {
       (a, b) => new Date(a.asistencium.fecha) - new Date(b.asistencium.fecha)
     );
 };
+const ordenarFaltas = (inicio, fin, asistencias) => {
+  return asistencias
+    .filter((asistencia) => {
+      const asistenciaFecha = dayjs(asistencia?.asistencium?.fecha);
+      return (
+        (asistenciaFecha.isSame(inicio) || asistenciaFecha.isAfter(inicio)) &&
+        (asistenciaFecha.isSame(fin) || asistenciaFecha.isBefore(fin)) &&
+        [
+          "Falto",
+          "Permiso no remunerado",
+          
+        ].includes(asistencia.asistencia)
+      );
+    })
+    .sort(
+      (a, b) => new Date(a.asistencium.fecha) - new Date(b.asistencium.fecha)
+    );
+};
 
 // crea un subarray o quincena de cada aprobacion
 function crearSubArray(
@@ -539,6 +557,11 @@ const asociacionData = async () => {
         fin,
         trabajadorMenorCodigo.trabajador_asistencia
       );
+      const faltas = ordenarFaltas(
+        inicio,
+        fin,
+        trabajadorMenorCodigo.trabajador_asistencia
+      );
       let daysAlreadyWorked = asistencias.length;
 
       if (
@@ -565,7 +588,8 @@ const asociacionData = async () => {
           dayjs(asistencias[asistencias.length - 1].asistencium.fecha),
           remainingWorkDays,
           contrato?.contratos[0]?.tareo,
-          asistencias
+          asistencias,
+          faltas
         );
         fechaEstimada = result.estimatedDate;
       }
@@ -642,6 +666,8 @@ const individual = async () => {
       const inicio = dayjs(contrato.fecha_inicio);
       const fin = dayjs(contrato.fecha_fin_estimada);
       const asistencias = ordenarAsistencia(inicio, fin, trabajadorAsistencias);
+      const faltas = ordenarFaltas(inicio, fin, trabajadorAsistencias);
+
       let daysAlreadyWorked = asistencias.length;
       if (
         contrato.tareo === "Lunes a sabado" ||
@@ -665,7 +691,8 @@ const individual = async () => {
           dayjs(asistencias[asistencias.length - 1].asistencium.fecha),
           remainingWorkDays,
           contrato.tareo,
-          asistencias
+          asistencias,
+          faltas
         );
 
         fechaEstimada = result.estimatedDate;
@@ -689,11 +716,19 @@ function calculateEstimatedDate(
   attendance,
   totalAsistencia,
   tareo,
-  asistencias
+  asistencias,
+  faltas
 ) {
   let lastAttendanceDate = attendance;
   let remainingWorkDays = totalAsistencia; // esto debería ser el total menos los días ya trabajados
   let estimatedDate;
+
+  if(faltas.length > 0){
+    console.log('====================================');
+    console.log(faltas.length);
+    console.log('====================================');
+    remainingWorkDays += faltas.length
+  }
 
   switch (tareo) {
     case "Lunes a sabado":

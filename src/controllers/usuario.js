@@ -1,3 +1,4 @@
+const { format } = require("path");
 const { usuario, permisos, trabajador } = require("../../config/db");
 const { encrypt } = require("../helpers/handleBcrypt");
 const fs = require("fs");
@@ -5,7 +6,13 @@ const fs = require("fs");
 const getUsuario = async (req, res, next) => {
   try {
     const all = await usuario.findAll();
-    return res.status(200).json({ data: all });
+    const format = all.map((item, i)=>{
+      return{
+        nro: i+1,
+        ...item.dataValues
+      }
+    })
+    return res.status(200).json({ data: format });
   } catch (error) {
     res.status(500).json();
   }
@@ -67,7 +74,7 @@ const updateUsuario = async (req, res, next) => {
   let info = {
     nombre: req.body.nombre,
     usuario: req.body.usuario,
-    estado: req.body.estado,
+    estado: Boolean(req.body.estado) ,
     rol_id: req.body.rol_id,
     cargo_id: req.body.cargo_id,
     caja: req.body.caja,
@@ -75,7 +82,7 @@ const updateUsuario = async (req, res, next) => {
       ? process.env.LOCAL_IMAGE + req.file.filename
       : req.body.foto,
   };
-
+  console.log(info);
   try {
     if (req?.body?.foto !== undefined && req.body.foto !== "") {
       const fileDir = require("path").resolve(__dirname, `./public/images/`);
@@ -89,7 +96,7 @@ const updateUsuario = async (req, res, next) => {
         }
       });
     }
-    let user = await usuario.update(info, { where: { id: id } });
+    await usuario.update(info, { where: { id: id } });
     return res
       .status(200)
       .json({ msg: "Usuario actualizado con éxito!", status: 200 });
