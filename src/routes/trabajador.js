@@ -10,12 +10,12 @@ router.get("/", trabajador.getTrabajador);
 router.get("/contrato", trabajador.getTrabajadorConContrato)
 router.get("/lista", trabajador.getListaTrabajadoreSelect)
 router.get("/:id", trabajador.getTrabajarById);
-router.get("/aprobado",checkAuth, trabajador.getTrabajadorPagoAprobado);
-router.get("/last/id",checkAuth, trabajador.getLastId);
+router.get("/aprobado", trabajador.getTrabajadorPagoAprobado);
+router.get("/last/id", trabajador.getLastId);
 router.get("/contrato/suspendido/:id", trabajador.getContratoSuspendidoById)
-router.post("/bulk",checkAuth, multer(), checkAuditoria,trabajador.postMultipleTrabajador);
-router.post("/",checkAuth, images(), checkAuditoria,trabajador.postTrabajador);
-router.put("/:id",checkAuth, images(),checkAuditoria, trabajador.updateTrabajador);
-router.delete("/:id",checkAuth,checkAuditoria, trabajador.deleteTrabajador);
-router.put("/softdelete/:id",checkAuth,checkAuditoria, trabajador.softDeleteTrabajador);
+router.post("/bulk", multer(), trabajador.postMultipleTrabajador);
+router.post("/", images(), trabajador.postTrabajador);
+router.put("/:id", images(), trabajador.updateTrabajador);
+router.delete("/:id", trabajador.deleteTrabajador);
+router.put("/softdelete/:id", trabajador.softDeleteTrabajador);
 module.exports = router;

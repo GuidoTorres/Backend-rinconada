@@ -410,9 +410,7 @@ const deleteContrato = async (req, res, next) => {
   let id = req.params.id;
   try {
     await teletrans.destroy({ where: { contrato_id: id } });
-    await contrato_pago.destroy({
-      where: { contrato_id: id },
-    });
+
 
     await aprobacion_contrato_pago.destroy({
       where: { contrato_id: id },

@@ -3,21 +3,20 @@ const {
   saldo,
   trabajador,
   sucursal,
+  detalle_ingreso_egreso,
 } = require("../../config/db");
-const { Op, Sequelize } = require("sequelize");
-const path = require("path");
+const { Op } = require("sequelize");
 const XLSX = require("xlsx");
-const fs = require("fs");
-const _ = require("lodash");
 
 // ingresos y egreos del modulo de finanzas
 
 // lista de ingresos y egreosos
 const getIngresoEgresos = async (req, res, next) => {
   try {
-    const get = await ingresos_egresos.findAll();
+    const get = await ingresos_egresos.findAll({
+      include: [{ model: detalle_ingreso_egreso }],
+    });
     return res.status(200).json({ data: get });
-    next();
   } catch (error) {
     res.status(500).json();
   }
@@ -29,174 +28,163 @@ const getIngresoEgresosById = async (req, res, next) => {
   try {
     const getById = await ingresos_egresos.findAll({
       where: { sucursal_id: id },
+      include: [{ model: detalle_ingreso_egreso }],
     });
     return res.status(200).json({ data: getById });
-    next();
   } catch (error) {
     res.status(500).json(error);
   }
 };
 // crear ingreso o egreso
 const postIngresoEgreso = async (req, res, next) => {
-  let newSaldo;
-  let info;
   try {
+    const {
+      sucursal_id,
+      fecha,
+      forma_pago,
+      encargado,
+      area,
+      cantidad,
+      medida,
+      descripcion,
+      monto,
+      proveedor,
+      comprobante,
+      movimiento,
+      sucursal_transferencia,
+      dni,
+      nro_comprobante,
+      productos,
+    } = req.body;
     const getSaldo = await saldo.findAll({
       where: { sucursal_id: req.body.sucursal_id },
     });
-    const getSaldoEgreso = await saldo.findAll({
-      where: { sucursal_id: req.body.sucursal_transferencia },
-    });
 
-    let objIngreso = {
-      sucursal_id: req.body.sucursal_id,
-      fecha: req.body.fecha,
-      movimiento: "Ingreso",
-      forma_pago: req.body.forma_pago,
-      encargado: req.body.encargado,
-      area: req.body.area,
-      cantidad: req.body.cantidad,
-      medida: req.body.medida,
-      descripcion: req.body.descripcion,
-      monto: parseFloat(req.body.monto),
-      proveedor: req.body.proveedor,
-      comprobante: req.body.comprobante,
-      sucursal_transferencia: req.body.sucursal_transferencia,
-      dni: req.body.dni,
-      precio: req.body.precio,
-      categoria: req.body.categoria,
-      nro_comprobante: req.body.nro_comprobante,
-      ingresos: getSaldo?.at(-1)?.ingresos + parseFloat(req.body.monto),
-      saldo_final: getSaldo?.at(-1)?.saldo_final + parseFloat(req.body.monto),
-    };
-    let objEgreso = {
-      sucursal_id: req.body.sucursal_id,
-      fecha: req.body.fecha,
-      movimiento: "Egreso",
-      forma_pago: req.body.forma_pago,
-      encargado: req.body.encargado,
-      area: req.body.area,
-      cantidad: req.body.cantidad,
-      medida: req.body.medida,
-      descripcion: req.body.descripcion,
-      monto: parseFloat(req.body.monto),
-      proveedor: req.body.proveedor,
-      comprobante: req.body.comprobante,
-      dni: req.body.dni,
-      precio: req.body.precio,
-      categoria: req.body.categoria,
-      nro_comprobante: req.body.nro_comprobante,
-      sucursal_transferencia: req.body.sucursal_transferencia,
-      egresos: getSaldo?.at(-1)?.egresos + parseFloat(req.body.monto),
-      saldo_final: getSaldo?.at(-1)?.saldo_final - parseFloat(req.body.monto),
-    };
-    let newSaldoIngreso = {
-      ingresos: getSaldo?.at(-1)?.ingresos + parseFloat(req.body.monto),
-      saldo_final: getSaldo?.at(-1)?.saldo_final + parseFloat(req.body.monto),
+    let movimientoObj = {
+      sucursal_id,
+      fecha,
+      movimiento,
+      forma_pago,
+      dni,
+      encargado,
+      area,
+      descripcion,
+      monto: parseFloat(monto),
+      proveedor,
+      comprobante,
+      sucursal_transferencia,
+      nro_comprobante,
     };
 
-    let newSaldoEgreso = {
-      egresos: getSaldo?.at(-1)?.egresos + parseFloat(req.body.monto),
-      saldo_final: getSaldo?.at(-1)?.saldo_final - parseFloat(req.body.monto),
-    };
-    // para registrar ingresos y egresos
-    if (!req.body.sucursal_transferencia && req.body.sucursal_id) {
-      if (req.body.movimiento === "Ingreso") {
-        const post = await ingresos_egresos.create(objIngreso);
-        const updateSaldo = await saldo.update(newSaldoIngreso, {
-          where: { sucursal_id: req.body.sucursal_id },
-        });
-        return res
-          .status(200)
-          .json({ msg: "Movimiento registrado con éxito!", status: 200 });
-      } else {
-        const post = await ingresos_egresos.create(objEgreso);
-        const updateSaldo = await saldo.update(newSaldoEgreso, {
-          where: { sucursal_id: req.body.sucursal_id },
-        });
-        return res
-          .status(200)
-          .json({ msg: "Movimiento registrado con éxito!", status: 200 });
-      }
+    let totalMovimiento;
+    if (productos.length > 0) {
+      totalMovimiento = productos.reduce((acumulado, producto) => {
+        return acumulado + producto.precio * producto.cantidad;
+      }, 0);
+      movimientoObj.monto = parseFloat(totalMovimiento);
     }
 
-    // para registrar las transferencias y actualizar el saldo de cada sucursal
-    if (
-      req.body.movimiento === "Egreso" &&
-      req.body.sucursal_transferencia &&
-      req.body.sucursal_transferencia !== req.body.sucursal_id
-    ) {
-      let objEgresoTransferencia = {
-        sucursal_id: req.body.sucursal_id,
-        fecha: req.body.fecha,
-        movimiento: req.body.movimiento,
-        forma_pago: req.body.forma_pago,
-        encargado: req.body.encargado,
-        area: req.body.area,
-        cantidad: req.body.cantidad,
-        medida: req.body.medida,
-        descripcion: req.body.descripcion,
-        monto: req.body.monto,
-        proveedor: req.body.proveedor,
-        comprobante: req.body.comprobante,
-        sucursal_transferencia: req.body.sucursal_transferencia,
-        dni: req.body.dni,
-        egresos: getSaldo?.at(-1)?.egresos + parseFloat(req.body.monto),
-        saldo_final:
-          getSaldo?.at(-1)?.saldo_final - -parseFloat(req.body.monto),
-      };
-      let objIngresoTransferencia = {
-        sucursal_id: req.body.sucursal_transferencia,
-        fecha: req.body.fecha,
-        movimiento: "Ingreso",
-        forma_pago: req.body.forma_pago,
-        encargado: req.body.encargado,
-        area: req.body.area,
-        cantidad: req.body.cantidad,
-        medida: req.body.medida,
-        descripcion: req.body.descripcion,
-        monto: req.body.monto,
-        proveedor: req.body.proveedor,
-        comprobante: req.body.comprobante,
-        sucursal_transferencia: req.body.sucursal_transferencia,
-        dni: req.body.dni,
-        ingresos: getSaldoEgreso?.at(-1)?.ingresos + parseInt(req.body.monto),
-        saldo_final:
-          getSaldoEgreso?.at(-1)?.saldo_final + parseFloat(req.body.monto),
-      };
-      let newSaldoEgresoTransferencia = {
-        egresos: getSaldo?.at(-1)?.egresos + parseFloat(req.body.monto),
-        saldo_final: getSaldo?.at(-1)?.saldo_final - parseFloat(req.body.monto),
-      };
-      let newSaldoIngresoTransferencia = {
-        ingresos: getSaldoEgreso?.at(-1)?.ingresos + parseFloat(req.body.monto),
-        saldo_final:
-          getSaldoEgreso?.at(-1)?.saldo_final + parseFloat(req.body.monto),
-      };
-      const postEgreso = await ingresos_egresos.create(objEgresoTransferencia);
-      const postIngreso = await ingresos_egresos.create(
-        objIngresoTransferencia
-      );
-
-      const updateSaldoEgreso = await saldo.update(
-        newSaldoEgresoTransferencia,
-        {
-          where: { sucursal_id: req.body.sucursal_id },
+    // para registrar ingresos y egresos
+    if (!sucursal_transferencia && sucursal_id) {
+      let newSaldo;
+      if (movimiento === "Ingreso") {
+        movimientoObj = {
+          ...movimientoObj,
+          ingresos:
+            getSaldo?.at(-1)?.ingresos + parseFloat(movimientoObj.monto),
+          saldo_final:
+            getSaldo?.at(-1)?.saldo_final + parseFloat(movimientoObj.monto),
+        };
+        newSaldo = {
+          ingresos:
+            getSaldo?.at(-1)?.ingresos + parseFloat(movimientoObj.monto),
+          saldo_final:
+            getSaldo?.at(-1)?.saldo_final + parseFloat(movimientoObj.monto),
+        };
+      } else {
+        movimientoObj = {
+          ...movimientoObj,
+          egresos: getSaldo?.at(-1)?.egresos + parseFloat(movimientoObj.monto),
+          saldo_final:
+            getSaldo?.at(-1)?.saldo_final - parseFloat(movimientoObj.monto),
+        };
+        newSaldo = {
+          egresos: getSaldo?.at(-1)?.egresos + parseFloat(movimientoObj.monto),
+          saldo_final:
+            getSaldo?.at(-1)?.saldo_final - parseFloat(movimientoObj.monto),
+        };
+        const ingresoEgreso = await ingresos_egresos.create(movimientoObj);
+        if (productos.length > 0) {
+          const producto = req.body.productos.map((item) => {
+            return {
+              ingreso_egreso_id: ingresoEgreso.id,
+              producto: item.producto,
+              precio: item.precio,
+              cantidad: item.cantidad,
+              medida: item.medida,
+              categoria: item.categoria,
+            };
+          });
+          await detalle_ingreso_egreso.bulkCreate(producto);
         }
-      );
-      const updateSaldoIngreso = await saldo.update(
-        newSaldoIngresoTransferencia,
-        {
-          where: { sucursal_id: req.body.sucursal_transferencia },
-        }
-      );
+      }
 
+      await saldo.update(newSaldo, {
+        where: { sucursal_id: req.body.sucursal_id },
+      });
       return res
         .status(200)
         .json({ msg: "Movimiento registrado con éxito!", status: 200 });
     }
 
-    next();
+    // para registrar las transferencias y actualizar el saldo de cada sucursal
+    if (
+      movimiento === "Egreso" &&
+      sucursal_transferencia &&
+      sucursal_transferencia !== sucursal_id
+    ) {
+      const getSaldoEgreso = await saldo.findAll({
+        where: { sucursal_id: req.body.sucursal_transferencia },
+      });
+      let objEgresoTransferencia = {
+        ...movimientoObj,
+        egresos: getSaldo?.at(-1)?.egresos + parseFloat(movimientoObj.monto),
+        saldo_final:
+          getSaldo?.at(-1)?.saldo_final - -parseFloat(movimientoObj.monto),
+      };
+      let objIngresoTransferencia = {
+        ...movimientoObj,
+        movimiento: "Ingreso",
+        ingresos:
+          getSaldoEgreso?.at(-1)?.ingresos + parseInt(movimientoObj.monto),
+        saldo_final:
+          getSaldoEgreso?.at(-1)?.saldo_final + parseFloat(movimientoObj.monto),
+      };
+      let newSaldoEgresoTransferencia = {
+        egresos: getSaldo?.at(-1)?.egresos + parseFloat(movimientoObj.monto),
+        saldo_final:
+          getSaldo?.at(-1)?.saldo_final - parseFloat(movimientoObj.monto),
+      };
+      let newSaldoIngresoTransferencia = {
+        ingresos:
+          getSaldoEgreso?.at(-1)?.ingresos + parseFloat(movimientoObj.monto),
+        saldo_final:
+          getSaldoEgreso?.at(-1)?.saldo_final + parseFloat(movimientoObj.monto),
+      };
+      await ingresos_egresos.create(objEgresoTransferencia);
+      await ingresos_egresos.create(objIngresoTransferencia);
+
+      await saldo.update(newSaldoEgresoTransferencia, {
+        where: { sucursal_id: req.body.sucursal_id },
+      });
+      await saldo.update(newSaldoIngresoTransferencia, {
+        where: { sucursal_id: req.body.sucursal_transferencia },
+      });
+
+      return res
+        .status(200)
+        .json({ msg: "Movimiento registrado con éxito!", status: 200 });
+    }
   } catch (error) {
     console.log(error);
     res.status(500).json({ msg: "No se pudo crear.", status: 500 });
@@ -215,22 +203,30 @@ const updateIngresoEgreso = async (req, res, next) => {
     let getSaldoOrigen = await saldo.findAll({
       where: { sucursal_id: id },
     });
+    let totalMovimiento;
+    if (req.body.productos.length > 0) {
+      totalMovimiento = req.body.productos.reduce((acumulado, producto) => {
+        return acumulado + producto.precio * producto.cantidad;
+      }, 0);
+      req.body.monto = parseFloat(totalMovimiento);
+    }
+    const saldoOrigen = getSaldoOrigen?.at(-1);
+    const ingreso = getIngresos?.at(-1);
 
+    let saldoFinal = parseFloat(saldoOrigen?.saldo_final);
+    let ingresoActual = parseFloat(saldoOrigen?.ingresos);
+    let montoAnterior = parseFloat(ingreso?.monto);
+    let montoNuevo = parseFloat(req.body.monto);
+    let egresoActual = parseFloat(saldoOrigen?.egresos);
     if (req.body.movimiento === "Ingreso") {
-      let saldoInicial = parseFloat(getSaldoOrigen?.at(-1)?.saldo_inicial);
-      let saldoFinal = parseFloat(getSaldoOrigen?.at(-1)?.saldo_final);
-      let ingresoActual = parseFloat(getSaldoOrigen?.at(-1)?.ingresos);
-      let montoAnterior = parseFloat(getIngresos?.at(-1)?.monto);
-      let montoNuevo = parseFloat(req.body.monto);
       let newSaldoIngreso = {
         ingresos: ingresoActual - montoAnterior + montoNuevo,
         saldo_final: saldoFinal - montoAnterior + montoNuevo,
       };
-
-      let update = await ingresos_egresos.update(req.body, {
+      await ingresos_egresos.update(req.body, {
         where: { id: req.body.id },
       });
-      const updateSaldo = await saldo.update(newSaldoIngreso, {
+      await saldo.update(newSaldoIngreso, {
         where: { sucursal_id: req.body.sucursal_id },
       });
       return res
@@ -238,20 +234,31 @@ const updateIngresoEgreso = async (req, res, next) => {
         .json({ msg: "Movimiento actualizado con éxito!", status: 200 });
     }
     if (req.body.movimiento === "Egreso" && !req.body.sucursal_transferencia) {
-      let saldoInicial = parseFloat(getSaldoOrigen?.at(-1)?.saldo_inicial);
-      let saldoFinal = parseFloat(getSaldoOrigen?.at(-1)?.saldo_final);
-      let egresoActual = parseFloat(getSaldoOrigen?.at(-1)?.egresos);
-      let montoAnterior = parseFloat(getIngresos?.at(-1)?.monto);
-      let montoNuevo = parseFloat(req.body.monto);
       let newSaldoEgreso = {
         egresos: egresoActual - montoAnterior + montoNuevo,
         saldo_final: saldoFinal + montoAnterior - montoNuevo,
       };
 
-      let update = await ingresos_egresos.update(req.body, {
+      await ingresos_egresos.update(req.body, {
         where: { id: req.body.id },
       });
-      const updateSaldo = await saldo.update(newSaldoEgreso, {
+      if (req.body.productos.length > 0) {
+        const producto = req.body.productos.map((item) => {
+          return {
+            ingreso_egreso_id: req.body.id,
+            producto: item.producto,
+            precio: item.precio,
+            cantidad: item.cantidad,
+            medida: item.medida,
+            categoria: item.categoria,
+          };
+        });
+        await detalle_ingreso_egreso.destroy({
+          where: { ingreso_egreso_id: req.body.id },
+        });
+        await detalle_ingreso_egreso.bulkCreate(producto);
+      }
+      await saldo.update(newSaldoEgreso, {
         where: { sucursal_id: req.body.sucursal_id },
       });
       return res
@@ -278,8 +285,6 @@ const updateIngresoEgreso = async (req, res, next) => {
         ingresos: ingresoActualDestino - montoAnterior + montoNuevo,
         saldo_final: saldoFinalDestino - montoAnterior + montoNuevo,
       };
-
-      console.log(req.body);
 
       const objOrigen = {
         fecha: req?.body?.fecha,
@@ -366,7 +371,6 @@ const updateIngresoEgreso = async (req, res, next) => {
         .status(200)
         .json({ msg: "Movimiento actualizado con éxito!", status: 200 });
     }
-    next();
   } catch (error) {
     console.log(error);
     res.status(500).json({ msg: "No se pudo actualizar.", status: 500 });
@@ -376,6 +380,7 @@ const updateIngresoEgreso = async (req, res, next) => {
 const deleteIngresoEgreso = async (req, res, next) => {
   let id = req.params.id;
   try {
+    await detalle_ingreso_egreso.destroy({ where: { ingreso_egreso_id: id } });
     let getIngresos = await ingresos_egresos.findAll({
       where: { id: id },
     });
@@ -482,7 +487,6 @@ const deleteIngresoEgreso = async (req, res, next) => {
         msg: "Movimiento eliminado con éxito!",
         status: 200,
       });
-      next();
     }
   } catch (error) {
     console.log(error);
@@ -595,73 +599,77 @@ const reporteIngreso = async (req, res, next) => {
 };
 // descargar excel de ingresos y egresos
 const convertJsonToExcel = async (req, res, next) => {
-  let id = req.params.id
+  let id = req.params.id;
   let queryConditions = {
     sucursal_id: id,
     fecha: {
-      [Op.lte]: req.query.fecha_fin
-    }
+      [Op.lte]: req.query.fecha_fin,
+    },
   };
-  
+
   if (req.query.movimiento) {
     queryConditions.movimiento = req.query.movimiento;
   }
-  try{
-  let saldoInicial = await saldo.findOne({
-    where: { sucursal_id: id },
-  });
-
-  if (!saldoInicial) {
-    throw new Error("No se encontro la sucursal." );
-  }
-
-  saldoInicial = parseFloat(saldoInicial.saldo_inicial); 
-  
-  const transacciones = await ingresos_egresos.findAll({
-    where: queryConditions,
-    include: [{ model: sucursal }],
-    order: [["fecha", "ASC"]],
-  });
-
-  // Calcular el saldo hasta la fecha inicial
-  transacciones.forEach((transaccion) => {
-    if (transaccion.fecha < req.query.fecha_inicio) {
-      if (transaccion.ingresos) {
-        saldoInicial += Number(parseFloat(transaccion.monto).toFixed(2));
-      } else if (transaccion.egresos) {
-        saldoInicial -= Number(parseFloat(transaccion.monto).toFixed(2));
-      }
-    }
-  });
-
-  const allMovimientos = transacciones
-    .filter((transaccion) => transaccion.fecha >= req.query.fecha_inicio)
-    .map((transaccion) => {
-      if (transaccion.ingresos) {
-        saldoInicial += Number(parseFloat(transaccion.monto).toFixed(2));
-      } else if (transaccion.egresos) {
-        saldoInicial -= Number(parseFloat(transaccion.monto).toFixed(2));
-      }
-      
-      return [
-        transaccion.fecha,
-        transaccion.comprobante,
-        transaccion.nro_comprobante,
-        transaccion.proveedor,
-        transaccion.descripcion,
-        transaccion.medida,
-        transaccion.cantidad,
-        transaccion.precio,
-        transaccion.sucursal.nombre,
-        transaccion.area,
-        transaccion.categoria,
-        transaccion.movimiento,
-        "Tesorería",
-        transaccion.ingresos ? Number(parseFloat(transaccion.monto).toFixed(2)) : "",
-        transaccion.egresos ? Number(parseFloat(transaccion.monto).toFixed(2)) : "",
-        saldoInicial.toFixed(2), // saldo final actualizado
-      ];
+  try {
+    let saldoInicial = await saldo.findOne({
+      where: { sucursal_id: id },
     });
+
+    if (!saldoInicial) {
+      throw new Error("No se encontro la sucursal.");
+    }
+
+    saldoInicial = parseFloat(saldoInicial.saldo_inicial);
+
+    const transacciones = await ingresos_egresos.findAll({
+      where: queryConditions,
+      include: [{ model: sucursal }],
+      order: [["fecha", "ASC"]],
+    });
+
+    // Calcular el saldo hasta la fecha inicial
+    transacciones.forEach((transaccion) => {
+      if (transaccion.fecha < req.query.fecha_inicio) {
+        if (transaccion.ingresos) {
+          saldoInicial += Number(parseFloat(transaccion.monto).toFixed(2));
+        } else if (transaccion.egresos) {
+          saldoInicial -= Number(parseFloat(transaccion.monto).toFixed(2));
+        }
+      }
+    });
+
+    const allMovimientos = transacciones
+      .filter((transaccion) => transaccion.fecha >= req.query.fecha_inicio)
+      .map((transaccion) => {
+        if (transaccion.ingresos) {
+          saldoInicial += Number(parseFloat(transaccion.monto).toFixed(2));
+        } else if (transaccion.egresos) {
+          saldoInicial -= Number(parseFloat(transaccion.monto).toFixed(2));
+        }
+
+        return [
+          transaccion.fecha,
+          transaccion.comprobante,
+          transaccion.nro_comprobante,
+          transaccion.proveedor,
+          transaccion.descripcion,
+          transaccion.medida,
+          transaccion.cantidad,
+          transaccion.precio,
+          transaccion.sucursal.nombre,
+          transaccion.area,
+          transaccion.categoria,
+          transaccion.movimiento,
+          "Tesorería",
+          transaccion.ingresos
+            ? Number(parseFloat(transaccion.monto).toFixed(2))
+            : "",
+          transaccion.egresos
+            ? Number(parseFloat(transaccion.monto).toFixed(2))
+            : "",
+          saldoInicial.toFixed(2), // saldo final actualizado
+        ];
+      });
 
     const workSheetColumnsName = [
       "FECHA",
@@ -685,8 +693,8 @@ const convertJsonToExcel = async (req, res, next) => {
     const workBook = XLSX.utils.book_new();
     const columnWidths = [
       { wch: 10 }, // "FECHA"
-      { wch:20 }, // "COMPROBANTE"
-      { wch: 15},
+      { wch: 20 }, // "COMPROBANTE"
+      { wch: 15 },
       { wch: 40 },
       { wch: 80 },
       { wch: 20 },
@@ -700,18 +708,17 @@ const convertJsonToExcel = async (req, res, next) => {
       { wch: 10 },
       { wch: 15 },
       { wch: 15 },
-  ];
+    ];
 
     //Consejo administracion
     const workSheetData1 = [workSheetColumnsName, ...allMovimientos];
     const workSheet1 = XLSX.utils.aoa_to_sheet(workSheetData1);
-    workSheet1['!cols'] = columnWidths;
+    workSheet1["!cols"] = columnWidths;
     XLSX.utils.book_append_sheet(
       workBook,
       workSheet1,
       "Reporte de movimientos"
     );
-
 
     // Usar writeBuffer en lugar de writeFile
     const buffer = XLSX.write(workBook, { bookType: "xlsx", type: "buffer" });
@@ -728,7 +735,146 @@ const convertJsonToExcel = async (req, res, next) => {
     res.status(500).json(error);
   }
 };
-// 
+const convertJsonToExcelComedor = async (req, res, next) => {
+  let id = req.params.id;
+  let queryConditions = {
+    sucursal_id: id,
+    fecha: {
+      [Op.lte]: req.query.fecha_fin,
+    },
+  };
+
+  if (req.query.movimiento) {
+    queryConditions.movimiento = req.query.movimiento;
+  }
+  try {
+    let saldoInicial = await saldo.findOne({
+      where: { sucursal_id: id },
+    });
+
+    if (!saldoInicial) {
+      throw new Error("No se encontro la sucursal.");
+    }
+
+    saldoInicial = parseFloat(saldoInicial.saldo_inicial);
+
+    const transacciones = await ingresos_egresos.findAll({
+      where: queryConditions,
+      include: [{ model: sucursal }, { model: detalle_ingreso_egreso }],
+      order: [["fecha", "ASC"]],
+    });
+
+    // Calcular el saldo hasta la fecha inicial
+    transacciones.forEach((transaccion) => {
+      if (transaccion.fecha < req.query.fecha_inicio) {
+        if (transaccion.ingresos) {
+          saldoInicial += Number(parseFloat(transaccion.monto).toFixed(2));
+        } else if (transaccion.egresos) {
+          saldoInicial -= Number(parseFloat(transaccion.monto).toFixed(2));
+        }
+      }
+    });
+
+    const allMovimientos = transacciones
+      .filter((transaccion) => transaccion.fecha >= req.query.fecha_inicio)
+      .map((transaccion, i) => {
+        if (transaccion.ingresos) {
+          saldoInicial += Number(parseFloat(transaccion.monto).toFixed(2));
+        } else if (transaccion.egresos) {
+          saldoInicial -= Number(parseFloat(transaccion.monto).toFixed(2));
+        }
+
+        return [
+          i+1,
+          transaccion.fecha,
+          transaccion.comprobante,
+          transaccion.nro_comprobante,
+          transaccion.proveedor,
+          transaccion.descripcion,
+          transaccion.medida,
+          transaccion.cantidad,
+          transaccion.precio,
+          transaccion.sucursal.nombre,
+          transaccion.area,
+          transaccion.categoria,
+          transaccion.movimiento,
+          "Tesorería",
+          transaccion.ingresos
+            ? Number(parseFloat(transaccion.monto).toFixed(2))
+            : "",
+          transaccion.egresos
+            ? Number(parseFloat(transaccion.monto).toFixed(2))
+            : "",
+          saldoInicial.toFixed(2), // saldo final actualizado
+        ];
+      });
+
+    const workSheetColumnsName = [
+      "ITEM",
+      "FECHA",
+      "COMPROBANTE",
+      "NÚMERO",
+      "PROVEEDOR",
+      "CONCEPTO",
+      "UNIDAD MEDIDA",
+      "CANTIDAD",
+      "PRECIO UNIT.",
+      "CAJA",
+      "ÁREA",
+      "CATEGORIA",
+      "TIPO DE GASTO",
+      "RESP. DE GASTO",
+      "INGRESO",
+      "EGRESO",
+      "SALDO",
+    ];
+
+    const workBook = XLSX.utils.book_new();
+    const columnWidths = [
+      { wch: 10 }, // "FECHA"
+      { wch: 20 }, // "COMPROBANTE"
+      { wch: 15 },
+      { wch: 40 },
+      { wch: 80 },
+      { wch: 20 },
+      { wch: 10 },
+      { wch: 20 },
+      { wch: 40 },
+      { wch: 60 },
+      { wch: 40 },
+      { wch: 20 },
+      { wch: 40 },
+      { wch: 10 },
+      { wch: 15 },
+      { wch: 15 },
+    ];
+
+    //Consejo administracion
+    const workSheetData1 = [workSheetColumnsName, ...allMovimientos];
+    const workSheet1 = XLSX.utils.aoa_to_sheet(workSheetData1);
+    workSheet1["!cols"] = columnWidths;
+    XLSX.utils.book_append_sheet(
+      workBook,
+      workSheet1,
+      "Reporte de movimientos"
+    );
+
+    // Usar writeBuffer en lugar de writeFile
+    const buffer = XLSX.write(workBook, { bookType: "xlsx", type: "buffer" });
+
+    // Enviar el buffer al cliente con los encabezados adecuados
+    res.setHeader(
+      "Content-Type",
+      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    );
+    res.setHeader("Content-Disposition", "attachment; filename=reporte.xlsx");
+    return res.send(buffer);
+  } catch (error) {
+    console.log(error);
+    res.status(500).json(error);
+  }
+};
+//
 const getTrabajadorFinanza = async (req, res, next) => {
   try {
     const get = await trabajador.findAll({
@@ -772,7 +918,12 @@ const getSaldoMensual = async (req, res, next) => {
       const clave = `${anio}-${mes}`;
 
       if (!movimientosPorMesYAnio[clave]) {
-        movimientosPorMesYAnio[clave] = { ingresos: 0, egresos: 0, mes: getMonthName(mes), anio: anio };
+        movimientosPorMesYAnio[clave] = {
+          ingresos: 0,
+          egresos: 0,
+          mes: getMonthName(mes),
+          anio: anio,
+        };
       }
 
       let monto = parseFloat(item.monto);
@@ -783,12 +934,14 @@ const getSaldoMensual = async (req, res, next) => {
       }
     });
 
-    const resultado = Object.values(movimientosPorMesYAnio).map(item => {
-      return { 
-        ...item, 
-        total: item.ingresos - item.egresos
-      }
-    }).filter(item => item.total !== 0);
+    const resultado = Object.values(movimientosPorMesYAnio)
+      .map((item) => {
+        return {
+          ...item,
+          total: item.ingresos - item.egresos,
+        };
+      })
+      .filter((item) => item.total !== 0);
 
     return res.status(200).json({ data: resultado });
   } catch (error) {
@@ -797,7 +950,21 @@ const getSaldoMensual = async (req, res, next) => {
   }
 };
 const getMonthName = (monthIndex) => {
-  const monthNames = ["ene", "feb", "mar", "mar", "abr", "may", "jun", "jul", "ago", "sep", "oct", "nov", "dic"];
+  const monthNames = [
+    "ene",
+    "feb",
+    "mar",
+    "mar",
+    "abr",
+    "may",
+    "jun",
+    "jul",
+    "ago",
+    "sep",
+    "oct",
+    "nov",
+    "dic",
+  ];
   return monthNames[monthIndex];
 };
 
@@ -809,6 +976,7 @@ module.exports = {
   deleteIngresoEgreso,
   reporteIngreso,
   convertJsonToExcel,
+  convertJsonToExcelComedor,
   getTrabajadorFinanza,
   getSaldoMensual,
 };

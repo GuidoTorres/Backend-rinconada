@@ -8,13 +8,13 @@ const getUsuario = usuario.getUsuario;
 const postUsuario = usuario.postUsuario;
 const updateUsuario = usuario.updateUsuario;
 
-router.get("/",checkAuth, getUsuario);
-router.get("/:id",checkAuth, usuario.getUsuarioById);
-router.get("/permiso/:id",checkAuth, usuario.getPermiso);
+router.get("/", getUsuario);
+router.get("/:id", usuario.getUsuarioById);
+router.get("/permiso/:id", usuario.getPermiso);
 router.get("/crear/trabajador", usuario.crearUsuariosDesdeTrabajadores)
-router.post("/",checkAuth, images(),checkAuditoria, postUsuario);
-router.put("/:id",checkAuth, images(),checkAuditoria, updateUsuario);
-router.put("/contrasenia/:id",checkAuth,checkAuditoria, usuario.changePassword);
-router.put("/permisos/:id",checkAuth,checkAuditoria, usuario.updatePermisos);
-router.delete("/:id",checkAuth,checkAuditoria, usuario.deleteUsuario);
+router.post("/", images(), postUsuario);
+router.put("/:id", images(), updateUsuario);
+router.put("/contrasenia/:id", usuario.changePassword);
+router.put("/permisos/:id", usuario.updatePermisos);
+router.delete("/:id", usuario.deleteUsuario);
 module.exports = router;

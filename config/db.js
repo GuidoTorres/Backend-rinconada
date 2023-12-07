@@ -1111,6 +1111,29 @@ const incidentes = sequelize.define(
   }
 );
 
+const detalle_ingreso_egreso = sequelize.define(
+  "detalle_ingreso_egreso",
+
+  {
+    id: {
+      type: DataTypes.INTEGER,
+      primaryKey: true,
+      autoIncrement: true,
+      allowNull: false,
+    },
+    producto: DataTypes.STRING,
+    precio: DataTypes.STRING,
+    cantidad: DataTypes.STRING,
+    medida: DataTypes.STRING,
+    categoria: DataTypes.STRING,
+    ingreso_egreso_id: DataTypes.INTEGER
+  },
+  {
+    tableName: "detalle_ingreso_egreso",
+    timestamp: true,
+  }
+);
+
 gerencia.hasMany(area, {
   foreignKey: "gerencia_id",
   onDelete: "CASCADE",
@@ -1512,6 +1535,8 @@ asociacion.hasMany(detalle_pago, {foreignKey:"asociacion_id"})
 detalle_pago.belongsTo(asociacion, {foreignKey: "asociacion_id"})
 aprobacion_contrato_pago.belongsTo(asociacion, { foreignKey: 'asociacion_id', targetKey: 'id' });
 
+ingresos_egresos.hasMany(detalle_ingreso_egreso, {foreignKey:"ingreso_egreso_id"})
+detalle_ingreso_egreso.belongsTo(ingresos_egresos, {foreignKey:"ingreso_egreso_id"})
 
 module.exports = {
   sequelize,
@@ -1558,5 +1583,6 @@ module.exports = {
   aprobacion_contrato_pago,
   suspensiones,
   suspensiones_jefes,
-  incidentes
+  incidentes,
+  detalle_ingreso_egreso
 };

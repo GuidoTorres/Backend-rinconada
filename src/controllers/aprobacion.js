@@ -1,4 +1,3 @@
-const dayjs = require("dayjs");
 const { Op } = require("sequelize");
 const {
   aprobacion_contrato_pago,

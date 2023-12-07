@@ -13,10 +13,6 @@ const {
 const XLSX = require("xlsx");
 const { Op } = require("sequelize");
 const dayjs = require("dayjs");
-require("moment/locale/es");
-// Cargar idioma en español
-const es = require("dayjs/locale/es");
-dayjs.locale(es);
 
 //  obtener la lista de asociaciones con trabajador
 const getAsociacion = async (req, res, next) => {

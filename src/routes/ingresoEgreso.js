@@ -12,4 +12,6 @@ router.post("/",checkAuth,checkAuditoria, ingresoEgreso.postIngresoEgreso);
 router.put("/:id",checkAuth,checkAuditoria, ingresoEgreso.updateIngresoEgreso);
 router.delete("/:id",checkAuth,checkAuditoria, ingresoEgreso.deleteIngresoEgreso);
 router.get("/excel/:id",checkAuth, ingresoEgreso.convertJsonToExcel);
+router.get("/excel/comedor:id",checkAuth, ingresoEgreso.convertJsonToExcelComedor);
+
 module.exports = router;

@@ -135,8 +135,8 @@ const crearTareoAsociacion = async () => {
               teletran: contrato?.dataValues?.teletrans?.at(-1)?.teletran || 0,
               total: contrato?.dataValues?.teletrans?.at(-1)?.saldo,
               contrato_id: contrato?.dataValues?.id,
-              jefe: usuarios[0].nombre,
-              gerente: usuarios[1].nombre,
+              jefe: usuarios[0]?.nombre,
+              gerente: usuarios[1]?.nombre,
             });
 
             contadorAsistencias = 0;
@@ -431,11 +431,7 @@ const ordenarFaltas = (inicio, fin, asistencias) => {
       return (
         (asistenciaFecha.isSame(inicio) || asistenciaFecha.isAfter(inicio)) &&
         (asistenciaFecha.isSame(fin) || asistenciaFecha.isBefore(fin)) &&
-        [
-          "Falto",
-          "Permiso no remunerado",
-          
-        ].includes(asistencia.asistencia)
+        ["Falto", "Permiso no remunerado"].includes(asistencia.asistencia)
       );
     })
     .sort(
@@ -473,11 +469,35 @@ function crearSubArray(
     dias_laborados: contador,
     contrato_id: contrato?.id,
     dni: trabajador.dni,
-    jefe: usuarios[0].nombre,
-    gerente: usuarios[1].nombre,
+    jefe: usuarios[0]?.nombre,
+    gerente: usuarios[1]?.nombre,
   });
 }
+function ordenarAsistenciasPorFecha(asistencias) {
+  return asistencias.sort((a, b) => dayjs(a.fecha).diff(dayjs(b.fecha)));
+}
+function contarDiasSinEstado(contract, asistencias) {
+  let contadorDiasSinEstado = 0;
+  let fechaInicio = dayjs(contract.fecha_inicio);
+  let ultimaFechaAsistencia =
+    asistencias.length > 0
+      ? dayjs(asistencias[asistencias.length - 1].fecha)
+      : fechaInicio;
 
+  while (fechaInicio.isBefore(ultimaFechaAsistencia)) {
+    let esDiaRegistrado = asistencias.some((a) =>
+      dayjs(a.fecha).isSame(fechaInicio, "day")
+    );
+
+    if (!esDiaRegistrado) {
+      contadorDiasSinEstado++;
+    }
+
+    fechaInicio = fechaInicio.add(1, "day");
+  }
+
+  return contadorDiasSinEstado;
+}
 //Para finalizar los contratos de las asocaciones si se completan las asistencias
 const asociacionData = async () => {
   try {
@@ -562,6 +582,8 @@ const asociacionData = async () => {
         fin,
         trabajadorMenorCodigo.trabajador_asistencia
       );
+      let asistenciasOrdenadas = ordenarAsistenciasPorFecha(asistencias);
+      let diasSinEstado = contarDiasSinEstado(contrato, asistenciasOrdenadas);
       let daysAlreadyWorked = asistencias.length;
 
       if (
@@ -589,13 +611,20 @@ const asociacionData = async () => {
           remainingWorkDays,
           contrato?.contratos[0]?.tareo,
           asistencias,
-          faltas
+          faltas,
+          diasSinEstado
         );
+        console.log(contrato.nombre);
+        console.log(remainingWorkDays);
+        console.log(faltas.length);
         fechaEstimada = result.estimatedDate;
       }
-      await contrato.update({
-        fecha_fin_estimada: fechaEstimada,
-      });
+        for (const contract of contrato.contratos) {
+          console.log(fechaEstimada.toDate());
+          console.log(contract?.fecha_fin_estimada);
+            await contract.update({ fecha_fin_estimada: fechaEstimada.toDate() });
+        }
+    
 
       contratosArray.push({
         contrato,
@@ -609,6 +638,7 @@ const asociacionData = async () => {
     console.error(error);
   }
 };
+
 // //Para finalizar los contratos de las trabajadores individuales si se completan las asistencias
 const individual = async () => {
   try {
@@ -667,6 +697,8 @@ const individual = async () => {
       const fin = dayjs(contrato.fecha_fin_estimada);
       const asistencias = ordenarAsistencia(inicio, fin, trabajadorAsistencias);
       const faltas = ordenarFaltas(inicio, fin, trabajadorAsistencias);
+      let asistenciasOrdenadas = ordenarAsistenciasPorFecha(asistencias);
+      let diasSinEstado = contarDiasSinEstado(contrato, asistenciasOrdenadas);
 
       let daysAlreadyWorked = asistencias.length;
       if (
@@ -692,7 +724,8 @@ const individual = async () => {
           remainingWorkDays,
           contrato.tareo,
           asistencias,
-          faltas
+          faltas,
+          diasSinEstado
         );
 
         fechaEstimada = result.estimatedDate;
@@ -717,18 +750,22 @@ function calculateEstimatedDate(
   totalAsistencia,
   tareo,
   asistencias,
-  faltas
+  faltas,
+  diasSinEstado
 ) {
   let lastAttendanceDate = attendance;
-  let remainingWorkDays = totalAsistencia; // esto debería ser el total menos los días ya trabajados
+  let remainingWorkDays = totalAsistencia; // total menos los días ya trabajados
   let estimatedDate;
 
-  if(faltas.length > 0){
-    console.log('====================================');
-    console.log(faltas.length);
-    console.log('====================================');
-    remainingWorkDays += faltas.length
-  }
+  // if (faltas.length > 0) {
+  //   remainingWorkDays += faltas.length;
+  // }
+
+ 
+  // if (diasSinEstado.length > 0) {
+  //   remainingWorkDays += diasSinEstado
+  // }
+
 
   switch (tareo) {
     case "Lunes a sabado":
@@ -737,8 +774,11 @@ function calculateEstimatedDate(
         (a) => dayjs(a.asistencium.fecha).day() === 0
       ).length;
 
-      // Reducir los días laborables restantes por los domingos trabajados
-      remainingWorkDays -= domingosTrabajados;
+      if(domingosTrabajados.length >0){
+
+        // Reducir los días laborables restantes por los domingos trabajados
+        remainingWorkDays -= domingosTrabajados;
+      }
 
       // Tomamos la última fecha de asistencia como punto de partida
       let currentDate = dayjs(
@@ -782,6 +822,7 @@ const asociacionFinalizarContratos = async (
 ) => {
   try {
     const contratos = contrato?.contratos[0];
+
     const trabajadores = contrato?.contratos[0]?.trabajador_contratos?.map(
       (item) => item?.trabajador
     );
@@ -801,13 +842,11 @@ const asociacionFinalizarContratos = async (
       );
       // Desligar trabajadores de la asociación y finalizar evaluaciones
       for (const trabajador of trabajadores) {
-        console.log(trabajador);
         finalizarPromises.push(trabajador.update({ asociacion_id: null }));
 
         // Ahora puedes iterar sobre evaluacionesActivas y finalizarlas
         for (const evaluacion of evaluaciones) {
-          if(evaluacion){
-
+          if (evaluacion) {
             finalizarPromises.push(evaluacion.update({ finalizado: true }));
           }
         }
@@ -865,12 +904,15 @@ const individualFinalizarContratos = async (
 };
 const actulizarFechaFin = async (req, res, next) => {
   try {
+    // Crear tareos antes de procesar los contratos
+    await crearTareoIndividual();
+    await crearTareoAsociacion();
+
+    // Obtener y procesar la información de los contratos
     const { contratosAFinalizar } = await asociacionData();
     const { contratosAFinalizar1 } = await individual();
 
-    crearTareoIndividual();
-    crearTareoAsociacion();
-
+    // Finalizar los contratos según sea necesario
     for (const {
       contrato,
       daysAlreadyWorked,
@@ -898,6 +940,7 @@ const actulizarFechaFin = async (req, res, next) => {
       );
     }
 
+    // Enviar respuesta al cliente
     return res
       .status(200)
       .json({ msg: "Asistencias validadas con éxito!.", status: 200 });
@@ -906,6 +949,7 @@ const actulizarFechaFin = async (req, res, next) => {
     res.status(500).json({ msg: "No se pudo validar." });
   }
 };
+
 
 module.exports = { actulizarFechaFin };
 

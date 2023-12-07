@@ -22,7 +22,7 @@ const getSocio = async (req, res, next) => {
     const recomendadosPorSocio = {};
 
     activosEvaluaciones.forEach((evaluacion) => {
-      const nombreNormalizado = evaluacion.recomendado_por.toLowerCase().replace(/,/g, '');
+      const nombreNormalizado = evaluacion?.recomendado_por?.toLowerCase()?.replace(/,/g, '');
       if (recomendadosPorSocio[nombreNormalizado]) {
         recomendadosPorSocio[nombreNormalizado]++;
       } else {

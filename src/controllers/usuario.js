@@ -6,12 +6,12 @@ const fs = require("fs");
 const getUsuario = async (req, res, next) => {
   try {
     const all = await usuario.findAll();
-    const format = all.map((item, i)=>{
-      return{
-        nro: i+1,
-        ...item.dataValues
-      }
-    })
+    const format = all.map((item, i) => {
+      return {
+        nro: i + 1,
+        ...item.dataValues,
+      };
+    });
     return res.status(200).json({ data: format });
   } catch (error) {
     res.status(500).json();
@@ -30,18 +30,20 @@ const getUsuarioById = async (req, res, next) => {
 };
 
 const postUsuario = async (req, res, next) => {
-  const { contrasenia } = req.body;
+  const { nombre, contrasenia, estado, rol_id, cargo_id, caja } = req.body;
+  if (!nombre || !req.body.usuario || !contrasenia) {
+    return res.status(400).json({ msg: "Faltan campos requeridos" });
+  }
   const passwordHash = await encrypt(contrasenia);
-
   let info = {
-    nombre: req.body.nombre,
+    nombre,
     usuario: req.body.usuario,
     contrasenia: passwordHash,
-    estado: req.body.estado || true,
-    rol_id: req.body.rol_id || null,
-    cargo_id: req.body.cargo_id || null,
+    estado: estado || true,
+    rol_id: rol_id || null,
+    cargo_id: cargo_id || null,
     foto: req.file ? process.env.LOCAL_IMAGE + req?.file?.filename : "",
-    caja: req.body.caja || null,
+    caja: caja || null,
   };
 
   try {
@@ -50,7 +52,7 @@ const postUsuario = async (req, res, next) => {
     });
 
     if (getUser.length > 0) {
-      return res.status(200).json({
+      return res.status(409).json({
         msg: "El nombre de usuario ya existe, intente con otro!",
         status: 500,
       });
@@ -64,7 +66,7 @@ const postUsuario = async (req, res, next) => {
     }
   } catch (error) {
     console.log(error);
-    res.status(500).json({ msg: "No se pudo crear!", status: 500 });
+    res.status(500).json({ msg: "No se pudo crear.", status: 500 });
   }
 };
 
@@ -74,15 +76,14 @@ const updateUsuario = async (req, res, next) => {
   let info = {
     nombre: req.body.nombre,
     usuario: req.body.usuario,
-    estado: Boolean(req.body.estado) ,
-    rol_id: req.body.rol_id,
-    cargo_id: req.body.cargo_id,
+    estado: Boolean(req.body.estado),
+    rol_id: req.body.rol_id || null ,
+    cargo_id: req.body.cargo_id || null ,
     caja: req.body.caja,
     foto: req.file
       ? process.env.LOCAL_IMAGE + req.file.filename
       : req.body.foto,
   };
-  console.log(info);
   try {
     if (req?.body?.foto !== undefined && req.body.foto !== "") {
       const fileDir = require("path").resolve(__dirname, `./public/images/`);
@@ -101,7 +102,6 @@ const updateUsuario = async (req, res, next) => {
       .status(200)
       .json({ msg: "Usuario actualizado con éxito!", status: 200 });
   } catch (error) {
-    console.log(error);
     res.status(500).json({ msg: "No se pudo actualizar", status: 500 });
   }
 };
@@ -109,11 +109,16 @@ const updateUsuario = async (req, res, next) => {
 const deleteUsuario = async (req, res, next) => {
   let id = req.params.id;
   try {
-    let user = await usuario.destroy({ where: { id: id } });
+    await trabajador.update(
+      { usuario_id: null },
+      { where: { usuario_id: id } }
+    );
+    await usuario.destroy({ where: { id: id } });
     return res
       .status(200)
       .json({ msg: "Usuario eliminado con éxito!", status: 200 });
   } catch (error) {
+
     res.status(500).json({ msg: "No se pudo eliminar", status: 500 });
   }
 };
